@@ -8,7 +8,7 @@
   - Jika offline, aplikasi tetap dapat digunakan dengan data lokal.
 -->
 
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
 <title>Form Permohonan Cuti</title>
 <meta name="description" content="Form Permohonan Cuti Karyawan">
 <meta property="og:type" content="website">
@@ -81,6 +81,14 @@ body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color
 .modal-overlay[hidden]{display:none;}
 .modal{position:relative !important;z-index:2147483647 !important;background:#fff;border-radius:12px;max-width:920px;width:100%;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,.18);pointer-events:auto !important;}
 .modal-header{position:relative;z-index:2147483647;pointer-events:auto !important;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;}
+.modal-close-x{border:none;background:transparent;font-size:24px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 8px;border-radius:6px;flex:none;margin-left:auto;}
+.modal-close-x:hover{background:rgba(0,0,0,.06);color:var(--ink);}
+.ttd-upload-row{display:flex;align-items:center;gap:8px;flex:0 1 240px;}
+.ttd-upload-row input[type="file"]{flex:1;min-width:0;}
+.ttd-upload-row .small-btn{flex:none;white-space:nowrap;}
+.ttd-canvas-modal{max-width:660px;}
+.ttd-canvas-wrap{display:flex;justify-content:center;background:#f8f9fb;border:1px dashed var(--line);border-radius:8px;padding:8px;}
+#ttdCanvasEl{background:#fff;border:1px solid var(--line);border-radius:6px;max-width:100%;touch-action:none;cursor:crosshair;}
 .modal-header input{padding:4px 6px;border:1px solid var(--line);border-radius:7px;font-size:11px;min-width:200px;max-width:280px;}
 .modal-header .btn-badge{font-size:11px !important;padding:5px 10px !important;flex:none;}
 .modal-header h2{margin:0;font-size:18px;}
@@ -1024,9 +1032,30 @@ body{
 </style>
 
 
-<!-- Favicon aplikasi -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Cpath d='M8 18h48v10H8z' fill='%23d50019'/%3E%3Cpath d='M8 28h48v8H8z' fill='%230054a6'/%3E%3Cpath d='M8 36h48v10H8z' fill='%23ffd100'/%3E%3Cellipse cx='32' cy='32' rx='13' ry='8' fill='%23ffffff' stroke='%23d50019' stroke-width='3'/%3E%3Cpath d='M25 32h14' stroke='%230054a6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Cpath d='M8 18h48v10H8z' fill='%23d50019'/%3E%3Cpath d='M8 28h48v8H8z' fill='%230054a6'/%3E%3Cpath d='M8 36h48v10H8z' fill='%23ffd100'/%3E%3Cellipse cx='32' cy='32' rx='13' ry='8' fill='%23ffffff' stroke='%23d50019' stroke-width='3'/%3E%3Cpath d='M25 32h14' stroke='%230054a6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<!-- Favicon & ikon aplikasi -->
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
+<link rel="shortcut icon" href="assets/icon-192.png">
+
+<!-- PWA: manifest & tampilan layar penuh -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#031391">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cuti">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+
+<script>
+// Daftarkan service worker untuk dukungan offline & PWA installable
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+</script>
 
 
 <style id="indomaret-background-fix">
@@ -1179,6 +1208,22 @@ Kelola Database</button></div>
 
 
 
+<!-- Modal Kanvas Tanda Tangan (e-sign) -->
+<div class="modal-overlay no-print" id="ttdCanvasOverlay" hidden>
+<div class="modal ttd-canvas-modal" role="dialog" aria-modal="true" aria-labelledby="ttdCanvasTitle">
+<div class="modal-header"><h2 id="ttdCanvasTitle">Buat Tanda Tangan</h2><button type="button" class="modal-close-x" id="btnCloseTtdCanvasX" title="Tutup" aria-label="Tutup">&times;</button></div>
+<p class="hint" style="margin-top:0;">Gambar tanda tangan menggunakan mouse atau jari di area di bawah ini.</p>
+<div class="ttd-canvas-wrap">
+<canvas id="ttdCanvasEl" width="600" height="220"></canvas>
+</div>
+<div class="modal-form-actions">
+<button type="button" class="btn primary" id="btnUseTtdCanvas">Gunakan Tanda Tangan</button>
+<button type="button" class="btn secondary" id="btnClearTtdCanvas">Bersihkan</button>
+<button type="button" class="btn secondary" id="btnCancelTtdCanvas">Batal</button>
+</div>
+</div>
+</div>
+
 <!-- Modal PIN untuk membuka Spreadsheet Database -->
 <div class="pin-overlay no-print" id="dbPinOverlay" hidden>
   <div class="pin-modal" id="dbPinModal" role="dialog" aria-modal="true" aria-labelledby="dbPinTitle">
@@ -1201,7 +1246,7 @@ Kelola Database</button></div>
 <div class="modal-overlay no-print" id="dbModalOverlay" hidden="">
 <div class="modal">
 <div class="modal-header"><h2>Database Karyawan</h2><button type="button" class="btn secondary btn-badge" id="btnOpenSpreadsheet"
-onclick="openSpreadsheetWithPin(event)">Database<span class="badge-alert">!</span></button><input id="dbSearch" placeholder="Cari NIK / Nama / Bagian"></div>
+onclick="openSpreadsheetWithPin(event)">Database<span class="badge-alert">!</span></button><input id="dbSearch" placeholder="Cari NIK / Nama / Bagian"><button type="button" class="modal-close-x" id="btnCloseDbX" title="Tutup tanpa menyimpan" aria-label="Tutup tanpa menyimpan">&times;</button></div>
 <div class="modal-form" id="empForm" hidden="">
 <h3 id="empFormTitle">Tambah Karyawan</h3>
 <div class="grid">
@@ -1209,7 +1254,7 @@ onclick="openSpreadsheetWithPin(event)">Database<span class="badge-alert">!</spa
 <label>Nama<input id="fNama"></label>
 <label>Bagian<input id="fBagian"></label>
 <label>Tgl Mulai Kerja<input id="fTglMasuk" type="date"></label>
-<label>Tanda Tangan (gambar)<input id="fTtd" type="file" accept="image/*"></label>
+<label>Tanda Tangan (gambar)<span class="ttd-upload-row"><input id="fTtd" type="file" accept="image/*"><button type="button" class="small-btn" id="btnBuatTtd">Buat TTD</button></span></label>
 <label>Pratinjau Tanda Tangan<img id="fTtdPreview" style="display:none;max-height:56px;max-width:160px;object-fit:contain;border:1px solid var(--line);border-radius:6px;padding:4px;"></label>
 </div>
 <input type="hidden" id="fOrigNik">
@@ -1656,6 +1701,91 @@ $("btnAddEmp").onclick=()=>openEmpForm(null);
 $("btnCancelEmp").onclick=closeEmpForm;
 $("btnSaveEmp").onclick=saveEmp;
 $("btnClearTtd").onclick=()=>{ pendingTtd=null; $("fTtdPreview").style.display="none"; $("fTtdPreview").src=""; };
+
+// Tutup panel Data Karyawan tanpa menyimpan
+$("btnCloseDbX").onclick=(e)=>{
+  if(e) e.stopPropagation();
+  try{ closeEmpForm(); }catch(err){}
+  const overlay=$("dbModalOverlay");
+  if(overlay){ overlay.hidden=true; overlay.style.display="none"; }
+};
+
+// ==== Kanvas Tanda Tangan (e-sign) ====
+(function(){
+  const overlay=$("ttdCanvasOverlay");
+  const canvas=$("ttdCanvasEl");
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  let drawing=false, hasStroke=false, lastX=0, lastY=0;
+
+  function getPos(evt){
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+    const cx=(evt.touches?evt.touches[0].clientX:evt.clientX);
+    const cy=(evt.touches?evt.touches[0].clientY:evt.clientY);
+    return {x:(cx-rect.left)*scaleX, y:(cy-rect.top)*scaleY};
+  }
+  function clearCanvas(){ ctx.clearRect(0,0,canvas.width,canvas.height); hasStroke=false; }
+  function startDraw(evt){
+    evt.preventDefault();
+    drawing=true; hasStroke=true;
+    const p=getPos(evt); lastX=p.x; lastY=p.y;
+    ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#111"; ctx.lineWidth=2.6;
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(lastX+0.01,lastY+0.01); ctx.stroke();
+  }
+  function moveDraw(evt){
+    if(!drawing) return;
+    evt.preventDefault();
+    const p=getPos(evt);
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke();
+    lastX=p.x; lastY=p.y;
+  }
+  function endDraw(evt){ if(evt) evt.preventDefault(); drawing=false; }
+
+  canvas.addEventListener("mousedown",startDraw);
+  canvas.addEventListener("mousemove",moveDraw);
+  window.addEventListener("mouseup",endDraw);
+  canvas.addEventListener("touchstart",startDraw,{passive:false});
+  canvas.addEventListener("touchmove",moveDraw,{passive:false});
+  canvas.addEventListener("touchend",endDraw,{passive:false});
+
+  function openTtdCanvas(){ clearCanvas(); overlay.hidden=false; overlay.style.display="flex"; }
+  function closeTtdCanvas(){ overlay.hidden=true; overlay.style.display="none"; }
+
+  $("btnBuatTtd").onclick=(e)=>{ if(e) e.preventDefault(); openTtdCanvas(); };
+  $("btnClearTtdCanvas").onclick=()=>{ clearCanvas(); };
+  $("btnCancelTtdCanvas").onclick=closeTtdCanvas;
+  $("btnCloseTtdCanvasX").onclick=closeTtdCanvas;
+
+  $("btnUseTtdCanvas").onclick=()=>{
+    if(!hasStroke){ alert("Silakan gambar tanda tangan terlebih dahulu."); return; }
+    try{
+      const w=canvas.width,h=canvas.height;
+      const id=ctx.getImageData(0,0,w,h),d=id.data;
+      let minX=w,minY=h,maxX=-1,maxY=-1;
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        if(d[(y*w+x)*4+3]>12){
+          minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+          minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+        }
+      }
+      let finalCanvas=canvas;
+      if(maxX>=minX){
+        const pad=8;
+        minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);
+        maxX=Math.min(w-1,maxX+pad);maxY=Math.min(h-1,maxY+pad);
+        const crop=document.createElement("canvas");
+        crop.width=maxX-minX+1;crop.height=maxY-minY+1;
+        crop.getContext("2d").drawImage(canvas,minX,minY,crop.width,crop.height,0,0,crop.width,crop.height);
+        finalCanvas=crop;
+      }
+      pendingTtd=finalCanvas.toDataURL("image/png");
+      $("fTtdPreview").src=pendingTtd;
+      $("fTtdPreview").style.display="inline-block";
+      $("fTtd").value="";
+      closeTtdCanvas();
+    }catch(err){ alert("Gagal memproses tanda tangan: "+err.message); }
+  };
+})();
 $("btnExportDb").onclick=exportDb;
 $("importDbFile").onchange=(e)=>{ if(e.target.files[0]) importDb(e.target.files[0]); e.target.value=""; };
 $("dbSearch").oninput=()=>renderDbTable();
