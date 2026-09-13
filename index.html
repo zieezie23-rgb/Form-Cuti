@@ -1208,22 +1208,6 @@ Kelola Database</button></div>
 
 
 
-<!-- Modal Kanvas Tanda Tangan (e-sign) -->
-<div class="modal-overlay no-print" id="ttdCanvasOverlay" hidden>
-<div class="modal ttd-canvas-modal" role="dialog" aria-modal="true" aria-labelledby="ttdCanvasTitle">
-<div class="modal-header"><h2 id="ttdCanvasTitle">Buat Tanda Tangan</h2><button type="button" class="modal-close-x" id="btnCloseTtdCanvasX" title="Tutup" aria-label="Tutup">&times;</button></div>
-<p class="hint" style="margin-top:0;">Gambar tanda tangan menggunakan mouse atau jari di area di bawah ini.</p>
-<div class="ttd-canvas-wrap">
-<canvas id="ttdCanvasEl" width="600" height="220"></canvas>
-</div>
-<div class="modal-form-actions">
-<button type="button" class="btn primary" id="btnUseTtdCanvas">Gunakan Tanda Tangan</button>
-<button type="button" class="btn secondary" id="btnClearTtdCanvas">Bersihkan</button>
-<button type="button" class="btn secondary" id="btnCancelTtdCanvas">Batal</button>
-</div>
-</div>
-</div>
-
 <!-- Modal PIN untuk membuka Spreadsheet Database -->
 <div class="pin-overlay no-print" id="dbPinOverlay" hidden>
   <div class="pin-modal" id="dbPinModal" role="dialog" aria-modal="true" aria-labelledby="dbPinTitle">
@@ -1286,6 +1270,22 @@ style="position:relative;z-index:2147483647 !important;pointer-events:auto !impo
 onclick="(function(e){if(e)e.stopPropagation();alert('Data telah disimpan.');var o=document.getElementById('dbModalOverlay');if(o){o.hidden=true;o.style.display='none';}})(event)">
 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>save</button>
 </div>
+</div>
+</div>
+</div>
+
+<!-- Modal Kanvas Tanda Tangan (e-sign) -->
+<div class="modal-overlay no-print" id="ttdCanvasOverlay" hidden>
+<div class="modal ttd-canvas-modal" role="dialog" aria-modal="true" aria-labelledby="ttdCanvasTitle">
+<div class="modal-header"><h2 id="ttdCanvasTitle">Buat Tanda Tangan</h2><button type="button" class="modal-close-x" id="btnCloseTtdCanvasX" title="Tutup" aria-label="Tutup">&times;</button></div>
+<p class="hint" style="margin-top:0;">Gambar tanda tangan menggunakan mouse atau jari di area di bawah ini.</p>
+<div class="ttd-canvas-wrap">
+<canvas id="ttdCanvasEl" width="600" height="220"></canvas>
+</div>
+<div class="modal-form-actions">
+<button type="button" class="btn primary" id="btnUseTtdCanvas">Gunakan Tanda Tangan</button>
+<button type="button" class="btn secondary" id="btnClearTtdCanvas">Bersihkan</button>
+<button type="button" class="btn secondary" id="btnCancelTtdCanvas">Batal</button>
 </div>
 </div>
 </div>
