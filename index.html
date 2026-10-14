@@ -14,15 +14,15 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Form Permohonan Cuti">
 <meta property="og:description" content="Sistem pengajuan cuti karyawan mudah, cepat dan terintegrasi.">
-<meta property="og:url" content="http://project.cuti.zie.com/">
-<meta property="og:image" content="http://project.cuti.zie.com/preview.png?v=2">
+<meta property="og:url" content="https://zieezie23-rgb.github.io/Form-Cuti/">
+<meta property="og:image" content="https://zieezie23-rgb.github.io/Form-Cuti/assets/preview.png?v=2">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Form Permohonan Cuti">
 <meta name="twitter:description" content="Sistem pengajuan cuti karyawan mudah, cepat dan terintegrasi.">
-<meta name="twitter:image" content="http://project.cuti.zie.com/preview.png?v=2">
+<meta name="twitter:image" content="https://zieezie23-rgb.github.io/Form-Cuti/assets/preview.png?v=2">
 <style>
 :root{--ink:#1f2430;--muted:#667085;--line:#d8dce3;--accent:#2f6fed;--paper:#fff;--bg:#f4f6f9;}
 *{box-sizing:border-box;}
@@ -2582,11 +2582,11 @@ function genApprovals(){
  if(!/^https?:/.test(location.protocol)) html+='<div class="apv-warn">Aplikasi masih dibuka dari file lokal. Tautan baru bisa dibuka penerima setelah aplikasi di-hosting online (mis. GitHub Pages / Cloudflare Pages).</div>';
  picks.forEach(r=>{
   const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama,toNik:r.nik,grp:group};
-  const url=baseUrl()+"?approve="+b64enc(p);
+  const url=baseUrl()+"?approve="+(CLOUD_SYNC_URL?p.id:b64enc(p));
   const num=WA[r.nik];
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent), txt=encodeURIComponent(buildMsg(p,url));
   const wa=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
-  rows.push({r,url,wa,num,id:p.id}); items.push({id:p.id,nik:r.nik,nama:r.nama});
+  rows.push({r,url,wa,num,id:p.id}); items.push({id:p.id,nik:r.nik,nama:r.nama,data:p});
  });
  out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><span class="apv-st" data-st="${esc(x.id)}">Menunggu</span><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
  apvState={nik,group,items}; saveApvState(); renderApprovedForm([]);
@@ -2604,11 +2604,12 @@ renderApvList();
 /* ----- Tampilan penerima (atasan / rekan) ----- */
 (function(){
  const t=new URLSearchParams(location.search).get("approve"); if(!t) return;
- let p; try{ p=b64dec(t); }catch(e){ p=null; }
+ const app0=1;
  const app=document.querySelector(".app"); if(app) app.style.display="none";
  document.querySelectorAll(".app-guide,.app-footer").forEach(n=>n.style.display="none");
  const v=document.createElement("div"); v.id="apvView";
- if(!p||!p.nama){ v.innerHTML='<div class="apv-card"><h1>Tautan tidak valid</h1><p class="sub">Minta pemohon mengirim ulang tautan persetujuan.</p></div>'; document.body.appendChild(v); return; }
+ function render(p){
+ if(!p||!p.nama){ v.innerHTML='<div class="apv-card"><h1>Tautan tidak valid</h1><p class="sub">Tautan tidak ditemukan atau gagal dimuat. Minta pemohon mengirim ulang tautan persetujuan.</p></div>'; document.body.appendChild(v); return; }
  const rows=[["Pemohon",proper(p.nama)+" ("+esc(p.nik)+")"],["Bagian",p.bagian],["Mulai kerja",formatDate(p.tglMasuk)],["Tanggal cuti",p.mulai],["Lama",p.ambil+" hari"],["Masuk kembali",formatDate(p.masuk)],["Sisa cuti",p.sisa+" hari"],["Alasan",proper(p.alasan)||"-"],["Alamat / kontak",p.kontak||"-"],["Pengganti",proper(p.pengganti)||"-"]];
  v.innerHTML=`<div class="apv-card"><h1>Persetujuan Cuti</h1><div class="sub">Halo ${esc(proper(p.to))}, mohon tanggapan Anda.</div><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table><textarea id="apvNote" placeholder="Catatan (opsional)"></textarea><div id="apvInfo"></div><div class="apv-btns"><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div><div class="apv-note">Tombol akan membuka WhatsApp dengan jawaban siap kirim ke ${esc(proper(p.nama))}.</div></div>`;
  document.body.appendChild(v);
@@ -2619,11 +2620,16 @@ renderApvList();
   const note=document.getElementById("apvNote").value.trim();
   if(p.id){ lockUi("Menyimpan tanggapan…"); await cloudPost({action:"respond",id:p.id,status:ok?"Disetujui":"Ditolak",catatan:note}); }
   const msg=`${ok?"✅ *DISETUJUI*":"❌ *DITOLAK*"}\n${proper(p.to)} ${ok?"menyetujui":"menolak"} permohonan cuti ${proper(p.nama)}\nTanggal: ${p.mulai} (${p.ambil} hari)${note?"\nCatatan: "+note:""}\nRef: ${p.id}`;
-  const num=normWa(p.wa);
-  location.href=(num?`https://wa.me/${num}`:`https://wa.me/`)+"?text="+encodeURIComponent(msg);
+  const num=normWa(p.wa), txt=encodeURIComponent(msg), isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  location.href=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
  }
  document.getElementById("apvYes").onclick=()=>reply(true);
  document.getElementById("apvNo").onclick=()=>reply(false);
+ }
+ if(t.length<=24){
+  v.innerHTML='<div class="apv-card"><h1>Memuat…</h1><p class="sub">Mengambil data permohonan.</p></div>'; document.body.appendChild(v);
+  cloudGet({action:"approvals",id:t,full:"1"},j=>{ const row=j&&j.data&&j.data[0]; render(row&&row.data?row.data:null); });
+ } else { let p; try{ p=b64dec(t); }catch(e){ p=null; } render(p); }
 })();
 
 /* ----- popup & dropdown penerima ----- */
