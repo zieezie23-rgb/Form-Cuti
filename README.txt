@@ -9,7 +9,8 @@ Fitur:
 - Sisa cuti otomatis.
 - Preview form.
 - Cetak / Simpan PDF A4 satu halaman.
-- Tanpa server dan tanpa instalasi.
+- Login NIK (password bebas, formalitas lokal) dan kotak masuk persetujuan.
+- Tanpa instalasi.
 
 Cara pakai:
 1. Ekstrak ZIP.

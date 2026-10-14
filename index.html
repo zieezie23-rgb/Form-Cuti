@@ -1235,11 +1235,37 @@ if ('serviceWorker' in navigator) {
 .ttd-foot button{font-size:12px;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer}
 @media(max-width:600px){#ttdPanel{left:8px;right:8px;bottom:8px;width:auto}}
 </style>
+<style>
+body.need-login .app{display:none!important;}
+.user-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.app-header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+#whoAmI{font-size:12px;color:#1b3a5c;font-weight:600;}
+.inbox-badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:4px;}
+.inbox-badge[hidden]{display:none;}
+#loginOverlay{position:fixed;inset:0;z-index:9500;background:var(--bg,#f3f6fb);display:flex;align-items:center;justify-content:center;padding:16px;}
+#loginOverlay[hidden]{display:none;}
+.login-card{background:#fff;border:1px solid var(--line,#dde3ee);border-radius:14px;max-width:360px;width:100%;padding:22px;box-shadow:0 6px 24px rgba(20,40,80,.08);}
+.login-card h1{font-size:19px;margin:0 0 4px;color:#1b3a5c;}
+.login-card .sub{color:var(--muted,#667085);font-size:13px;margin-bottom:14px;}
+.login-card label{display:block;font-size:12px;color:#667085;margin-bottom:10px;}
+.login-card input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;font-size:15px;border:1px solid var(--line,#dde3ee);border-radius:8px;}
+.login-card button{width:100%;padding:11px;border:0;border-radius:10px;background:#1b3a5c;color:#fff;font-size:15px;font-weight:700;cursor:pointer;}
+.login-err{color:#dc2626;font-size:12px;min-height:16px;margin-bottom:8px;}
+.inbox-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 10px;margin-bottom:6px;border:1px solid var(--line,#dde3ee);border-radius:9px;background:#fff;cursor:pointer;font:inherit;font-size:13px;}
+.inbox-item b{flex:1;color:#1b3a5c;}
+.inbox-item small{display:block;color:#667085;font-weight:400;}
+.inbox-item.wait{border-color:#f5b942;background:#fffaf0;}
+#inboxDetail .apv-card{box-shadow:none;border:0;padding:0;max-width:none;}
+#cutiToast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9800;background:#1b3a5c;color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;max-width:92vw;}
+#cutiToast[hidden]{display:none;}
+@media print{#loginOverlay,#cutiToast,.user-bar{display:none!important;}}
+</style>
 </head>
-<body>
+<body class="need-login">
 <div class="app">
 <header class="app-header">
 <div><h1>Form Permohonan Cuti</h1><p>Isi data, lalu cetak dan simpan sebagai PDF.</p></div>
+<div class="user-bar no-print"><span id="whoAmI"></span><button type="button" class="btn" id="btnInbox">Persetujuan <span id="inboxBadge" class="inbox-badge" hidden>0</span></button><button type="button" class="btn secondary" id="btnLogout">Keluar</button></div>
 </header>
 <main class="workspace">
 <section class="panel no-print">
@@ -1460,7 +1486,7 @@ function proper(s) { return (s||"").toLowerCase().replace(/(^|[\s\/.-])([a-zà-�
 function todayPlace() { return "Bogor, "+new Intl.DateTimeFormat("id-ID",{day:"2-digit",month:"long",year:"numeric"}).format(new Date()); }
 function findEmployee() {
  const e=EMPLOYEES.find(x=>x.nik===$("nik").value.trim());
- $("nama").value=e?e.nama:""; $("bagian").value=e?e.bagian:""; $("tglMasuk").value=e?formatDate(e.tglMasuk):""; sync();
+ $("nama").value=e?e.nama:""; $("bagian").value=e?e.bagian:""; $("tglMasuk").value=e?formatDate(e.tglMasuk):""; refreshPenggantiOptions(); sync();
 }
 function sync() {
  const hak=Number($("hakCuti").value||0), ambil=Number($("cutiDiambil").value||0), sisa=hak-ambil;
@@ -1635,8 +1661,10 @@ function refreshNikList(){ $("nikList").innerHTML=""; EMPLOYEES.forEach(e=>{cons
 function refreshPenggantiOptions(){
  const sel=$("pengganti"); const cur=sel.value;
  sel.innerHTML='<option value="">- Pilih -</option>';
- EMPLOYEES.slice().sort((a,b)=>a.nama.localeCompare(b.nama)).forEach(e=>{const o=document.createElement("option");o.value=e.nama;o.textContent=e.nama;sel.appendChild(o);});
- if(EMPLOYEES.some(e=>e.nama===cur)) sel.value=cur;
+ const me=EMPLOYEES.find(x=>x.nik===$("nik").value.trim());
+ const list=me?EMPLOYEES.filter(e=>e.nik!==me.nik&&e.bagian===me.bagian):[];
+ list.sort((a,b)=>a.nama.localeCompare(b.nama)).forEach(e=>{const o=document.createElement("option");o.value=e.nama;o.textContent=e.nama;sel.appendChild(o);});
+ if(list.some(e=>e.nama===cur)) sel.value=cur;
 }
 let dbSort={key:null,dir:1};
 function showLockWarning(){
@@ -2536,12 +2564,13 @@ function renderApvList(){
  const box=$("apvList"); if(!box) return;
  const q=($("apvFilter").value||"").toLowerCase(), me=$("nik").value.trim();
  const checked=new Set([...box.querySelectorAll("input:checked")].map(i=>i.value));
- const rows=EMPLOYEES.filter(e=>e.nik!==me&&(!q||e.nama.toLowerCase().includes(q)||e.bagian.toLowerCase().includes(q)))
+ const meE=EMPLOYEES.find(x=>x.nik===me);
+ const rows=EMPLOYEES.filter(e=>e.nik!==me&&(e.bagian==="Supervisor"||(meE&&e.bagian===meE.bagian))&&(!q||e.nama.toLowerCase().includes(q)||e.bagian.toLowerCase().includes(q)))
   .sort((a,b)=>((b.bagian==="Supervisor")-(a.bagian==="Supervisor"))||a.nama.localeCompare(b.nama));
  box.innerHTML=rows.map(e=>`<label class="apv-item ${WA[e.nik]?"":"nowa"}"><input type="checkbox" value="${esc(e.nik)}" ${checked.has(e.nik)?"checked":""}>${esc(proper(e.nama))}<small>${esc(e.bagian)}${WA[e.nik]?"":" · no. WA kosong"}</small></label>`).join("")||'<div style="padding:8px;font-size:12px;color:#667085">Tidak ada data.</div>';
 }
 function buildMsg(p,url){
- return `Assalamualaikum ${proper(p.to)},\nMohon persetujuan cuti:\n*${proper(p.nama)}* (${p.bagian})\nTanggal: ${p.mulai||"-"}\nLama: ${p.ambil} hari\nAlasan: ${proper(p.alasan)||"-"}\nPengganti: ${proper(p.pengganti)||"-"}\n\nBuka tautan untuk menyetujui / menolak:\n${url}`;
+ return `Assalamualaikum ${proper(p.to)},\nMohon persetujuan cuti:\n*${proper(p.nama)}* (${p.bagian})\nTanggal: ${p.mulai||"-"}\nLama: ${p.ambil} hari\nAlasan: ${proper(p.alasan)||"-"}\nPengganti: ${proper(p.pengganti)||"-"}\n\nBuka aplikasi, login dengan NIK Anda, lalu setujui / tolak di menu "Persetujuan":\n${url}`;
 }
 
 /* ===== Status persetujuan di cloud (Google Sheets) ===== */
@@ -2615,10 +2644,10 @@ function genApprovals(){
  picks.forEach(r=>{ const c=$("apvList").querySelector(`input[value="${r.nik}"]`); if(c) c.checked=true; });
  const hak=Number($("hakCuti").value||0), ambil=Number($("cutiDiambil").value||0);
  let html=""; const rows=[]; const group="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); const items=[];
- if(!/^https?:/.test(location.protocol)) html+='<div class="apv-warn">Aplikasi masih dibuka dari file lokal. Tautan baru bisa dibuka penerima setelah aplikasi di-hosting online (mis. GitHub Pages / Cloudflare Pages).</div>';
+ if(!/^https?:/.test(location.protocol)) html+='<div class="apv-warn">Aplikasi masih dibuka dari file lokal. Penerima baru bisa membuka aplikasi setelah di-hosting online (mis. GitHub Pages / Cloudflare Pages).</div>';
  picks.forEach(r=>{
   const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama,toNik:r.nik,grp:group};
-  const url=baseUrl()+"?approve="+(CLOUD_SYNC_URL?p.id:b64enc(p));
+  const url=baseUrl();
   const num=WA[r.nik];
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent), txt=encodeURIComponent(buildMsg(p,url));
   const wa=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
@@ -2637,37 +2666,6 @@ $("nik").addEventListener("change",()=>{ renderApvList(); if(WA[$("nik").value.t
 $("nik").addEventListener("change",apvOnNik); $("nik").addEventListener("input",apvOnNik);
 $("btnReset").addEventListener("click",()=>{ stopApvPoll(); apvState=null; saveApvState(); renderApprovedForm([]); const o=$("apvResult"); if(o) o.innerHTML=""; });
 renderApvList();
-
-/* ----- Tampilan penerima (atasan / rekan) ----- */
-(function(){
- const t=new URLSearchParams(location.search).get("approve"); if(!t) return;
- const app0=1;
- const app=document.querySelector(".app"); if(app) app.style.display="none";
- document.querySelectorAll(".app-guide,.app-footer").forEach(n=>n.style.display="none");
- const v=document.createElement("div"); v.id="apvView";
- function render(p){
- if(!p||!p.nama){ v.innerHTML='<div class="apv-card"><h1>Tautan tidak valid</h1><p class="sub">Tautan tidak ditemukan atau gagal dimuat. Minta pemohon mengirim ulang tautan persetujuan.</p></div>'; document.body.appendChild(v); return; }
- const rows=[["Pemohon",proper(p.nama)+" ("+esc(p.nik)+")"],["Bagian",p.bagian],["Mulai kerja",formatDate(p.tglMasuk)],["Tanggal cuti",p.mulai],["Lama",p.ambil+" hari"],["Masuk kembali",formatDate(p.masuk)],["Sisa cuti",p.sisa+" hari"],["Alasan",proper(p.alasan)||"-"],["Alamat / kontak",p.kontak||"-"],["Pengganti",proper(p.pengganti)||"-"]];
- v.innerHTML=`<div class="apv-card"><h1>Persetujuan Cuti</h1><div class="sub">Halo ${esc(proper(p.to))}, mohon tanggapan Anda.</div><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table><textarea id="apvNote" placeholder="Catatan (opsional)"></textarea><div id="apvInfo"></div><div class="apv-btns"><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div><div class="apv-note">Tombol akan membuka WhatsApp dengan jawaban siap kirim ke ${esc(proper(p.nama))}.</div></div>`;
- document.body.appendChild(v);
- const btns=[document.getElementById("apvYes"),document.getElementById("apvNo")];
- const lockUi=(txt)=>{ btns.forEach(b=>b.disabled=true); document.getElementById("apvNote").disabled=true; if(txt) document.getElementById("apvInfo").innerHTML='<div class="apv-done">'+esc(txt)+'</div>'; };
- if(p.id) cloudGet({action:"approvals",id:p.id},j=>{ const row=j&&j.data&&j.data[0]; if(row&&row.status==="Dibatalkan") lockUi("Permohonan ini sudah dibatalkan oleh pemohon."); else if(row&&row.status!=="Menunggu") lockUi("Anda sudah memberi tanggapan: "+row.status+"."); });
- async function reply(ok){
-  const note=document.getElementById("apvNote").value.trim();
-  if(p.id){ lockUi("Menyimpan tanggapan…"); await cloudPost({action:"respond",id:p.id,status:ok?"Disetujui":"Ditolak",catatan:note}); }
-  const msg=`${ok?"✅ *DISETUJUI*":"❌ *DITOLAK*"}\n${proper(p.to)} ${ok?"menyetujui":"menolak"} permohonan cuti ${proper(p.nama)}\nTanggal: ${p.mulai} (${p.ambil} hari)${note?"\nCatatan: "+note:""}\nRef: ${p.id}`;
-  const num=normWa(p.wa), txt=encodeURIComponent(msg), isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  location.href=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
- }
- document.getElementById("apvYes").onclick=()=>reply(true);
- document.getElementById("apvNo").onclick=()=>reply(false);
- }
- if(t.length<=24){
-  v.innerHTML='<div class="apv-card"><h1>Memuat…</h1><p class="sub">Mengambil data permohonan.</p></div>'; document.body.appendChild(v);
-  cloudGet({action:"approvals",id:t,full:"1"},j=>{ const row=j&&j.data&&j.data[0]; render(row&&row.data?row.data:null); });
- } else { let p; try{ p=b64dec(t); }catch(e){ p=null; } render(p); }
-})();
 
 /* ----- popup & dropdown penerima ----- */
 (function(){
@@ -2772,5 +2770,134 @@ $("btnTtdPos").onclick=()=>{ const p=$("ttdPanel"); p.hidden=!p.hidden; if(!p.hi
 $("ttdClose").onclick=$("ttdDone").onclick=()=>{ $("ttdPanel").hidden=true; };
 $("ttdReset").onclick=()=>{ TTD=Object.assign({},TTD_DEF); ttdApply(); ttdSave(); ttdSync(); };
 ttdApply();
+</script>
+<div id="loginOverlay" class="no-print" hidden>
+<form class="login-card" id="loginForm" autocomplete="off">
+<h1>Form Permohonan Cuti</h1><div class="sub">Masuk dengan NIK Anda.</div>
+<label>NIK<input id="loginNik" inputmode="numeric" placeholder="Masukkan NIK" autocomplete="username"></label>
+<label>Password<input id="loginPass" type="password" placeholder="Password bebas" autocomplete="current-password"></label>
+<div class="login-err" id="loginErr"></div>
+<button type="submit">Masuk</button>
+</form>
+</div>
+<div id="cutiToast" hidden></div>
+<div class="apv-overlay no-print" id="inboxModal" hidden>
+<div class="apv-dialog" role="dialog" aria-modal="true">
+<div class="apv-dhead"><h3 id="inboxTitle">Permintaan Persetujuan</h3><button type="button" class="apv-x" id="inboxClose" aria-label="Tutup">&times;</button></div>
+<div id="inboxList"></div><div id="inboxDetail" hidden></div>
+</div>
+</div>
+<script>
+/* ===== Login (formalitas, lokal) + Kotak masuk persetujuan ===== */
+(function(){
+ const LS="cuti_login"; let me=null, timer=null, items=[], seenInit=false;
+ const ov=$("loginOverlay");
+ function seenKey(){ return "cuti_seen_"+me; }
+ function getSeen(){ try{ return new Set(JSON.parse(localStorage.getItem(seenKey())||"[]")); }catch(e){ return new Set(); } }
+ function setSeen(set){ try{ localStorage.setItem(seenKey(),JSON.stringify([...set])); }catch(e){} }
+ function toast(msg){ const t=$("cutiToast"); t.textContent=msg; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>{t.hidden=true;},7000); }
+ $("cutiToast").onclick=()=>{ $("cutiToast").hidden=true; openInbox(); };
+ function applyUser(){
+  const e=EMPLOYEES.find(x=>x.nik===me);
+  document.body.classList.remove("need-login"); ov.hidden=true;
+  $("whoAmI").textContent=e?proper(e.nama)+" · "+e.bagian:me;
+  const n=$("nik"); n.value=me; n.readOnly=true;
+  n.dispatchEvent(new Event("input",{bubbles:true})); n.dispatchEvent(new Event("change",{bubbles:true}));
+  if(typeof apvOnNik==="function") apvOnNik();
+  seenInit=false; items=[]; poll(); clearInterval(timer); timer=setInterval(()=>{ if(!document.hidden) poll(); },20000);
+  if(new URLSearchParams(location.search).get("approve")){ try{ history.replaceState(null,"",location.pathname); }catch(e){} setTimeout(openInbox,600); }
+ }
+ function showLogin(msg){
+  document.body.classList.add("need-login"); ov.hidden=false; $("loginErr").textContent=msg||"";
+  $("loginNik").value=""; $("loginPass").value=""; setTimeout(()=>$("loginNik").focus(),50);
+ }
+ $("loginForm").onsubmit=ev=>{
+  ev.preventDefault();
+  const nik=$("loginNik").value.trim(), pass=$("loginPass").value;
+  if(!nik) return $("loginErr").textContent="NIK wajib diisi.";
+  if(!EMPLOYEES.some(x=>x.nik===nik)) return $("loginErr").textContent="NIK tidak terdaftar.";
+  try{ localStorage.setItem(LS,JSON.stringify({nik,pass})); }catch(e){}
+  me=nik; applyUser();
+  try{ if("Notification" in window&&Notification.permission==="default") Notification.requestPermission(); }catch(e){}
+ };
+ $("btnLogout").onclick=()=>{
+  if(!confirm("Keluar dari aplikasi?")) return;
+  try{ localStorage.removeItem(LS); }catch(e){}
+  clearInterval(timer); me=null; $("nik").readOnly=false; $("inboxModal").hidden=true; $("inboxBadge").hidden=true; document.title=document.title.replace(/^\(\d+\)\s*/,"");
+  showLogin();
+ };
+ $("btnReset").addEventListener("click",()=>{ if(!me) return; const n=$("nik"); n.value=me; n.dispatchEvent(new Event("input",{bubbles:true})); n.dispatchEvent(new Event("change",{bubbles:true})); });
+
+ function pending(){ return items.filter(x=>x.status==="Menunggu"); }
+ function updateBadge(){
+  const n=pending().length, b=$("inboxBadge"); b.textContent=n; b.hidden=!n;
+  document.title=(n?"("+n+") ":"")+document.title.replace(/^\(\d+\)\s*/,"");
+ }
+ function notify(fresh){
+  const x=fresh[0], who=proper((x.data&&x.data.nama)||"karyawan");
+  const msg=fresh.length>1?fresh.length+" permintaan persetujuan cuti baru":"Permintaan persetujuan cuti dari "+who;
+  toast("🔔 "+msg+" — klik untuk membuka");
+  try{
+   if("Notification" in window&&Notification.permission==="granted"){
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r=>r.showNotification("Form Cuti",{body:msg,icon:"assets/icon-192.png",tag:"cuti-apv"})).catch(()=>{ new Notification("Form Cuti",{body:msg}); });
+    else new Notification("Form Cuti",{body:msg});
+   }
+  }catch(e){}
+ }
+ function poll(cb){
+  if(!me) return;
+  const who=me;
+  cloudGet({action:"inbox",nik:me},j=>{
+   if(!j||who!==me){ if(cb) cb(); return; }
+   items=j.data||[]; updateBadge();
+   const seen=getSeen(), pend=pending(), fresh=pend.filter(x=>!seen.has(x.id));
+   if(fresh.length) notify(fresh);
+   seenInit=true; pend.forEach(x=>seen.add(x.id)); setSeen(seen);
+   if(!$("inboxModal").hidden&&$("inboxDetail").hidden) renderList();
+   if(cb) cb();
+  });
+ }
+ document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(); });
+
+ function stLabel(s){ return s==="Disetujui"?"✓ Disetujui":s==="Ditolak"?"✗ Ditolak":"Menunggu"; }
+ function renderList(){
+  $("inboxTitle").textContent="Permintaan Persetujuan"; $("inboxDetail").hidden=true; $("inboxList").hidden=false;
+  if(!CLOUD_SYNC_URL){ $("inboxList").innerHTML='<div class="apv-warn">Database cloud belum diatur.</div>'; return; }
+  $("inboxList").innerHTML=items.length?items.map((x,i)=>{ const d=x.data||{}; return `<button type="button" class="inbox-item ${x.status==="Menunggu"?"wait":""}" data-i="${i}"><b>${esc(proper(d.nama||"-"))}<small>${esc(d.bagian||"")} · ${esc(d.mulai||"-")} · ${esc(d.ambil||"-")} hari<br>Pengganti: ${esc(proper(d.pengganti)||"-")}</small></b><span class="apv-st ${x.status==="Disetujui"?"ok":x.status==="Ditolak"?"no":""}">${stLabel(x.status)}</span></button>`; }).join(""):'<div style="padding:8px;font-size:13px;color:#667085">Belum ada permintaan persetujuan untuk Anda.</div>';
+  $("inboxList").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>openDetail(items[b.dataset.i]));
+ }
+ function openInbox(){ $("inboxModal").hidden=false; renderList(); poll(); }
+ function openDetail(x){
+  const p=x.data; if(!p) return;
+  $("inboxList").hidden=true; const box=$("inboxDetail"); box.hidden=false; $("inboxTitle").textContent="Persetujuan Cuti";
+  const rows=[["Pemohon",proper(p.nama)+" ("+esc(p.nik)+")"],["Bagian",p.bagian],["Mulai kerja",formatDate(p.tglMasuk)],["Tanggal cuti",p.mulai],["Lama",p.ambil+" hari"],["Masuk kembali",formatDate(p.masuk)],["Sisa cuti",p.sisa+" hari"],["Alasan",proper(p.alasan)||"-"],["Alamat / kontak",p.kontak||"-"],["Pengganti",proper(p.pengganti)||"-"]];
+  const done=x.status!=="Menunggu";
+  box.innerHTML=`<div class="apv-card"><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table>
+  <textarea id="apvNote" placeholder="Catatan (opsional)" ${done?"disabled":""}>${done?esc(x.catatan||""):""}</textarea><div id="apvInfo">${done?'<div class="apv-done">Status: '+esc(x.status)+'</div>':""}</div>
+  <div class="apv-btns" ${done?"hidden":""}><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div>
+  <div style="margin-top:10px"><button type="button" class="btn secondary" id="inboxBack">← Kembali</button></div></div>`;
+  $("inboxBack").onclick=()=>{ renderList(); };
+  async function reply(ok){
+   const note=$("apvNote").value.trim();
+   $("apvYes").disabled=$("apvNo").disabled=true; $("apvNote").disabled=true;
+   $("apvInfo").innerHTML='<div class="apv-done">Menyimpan tanggapan…</div>';
+   await cloudPost({action:"respond",id:x.id,status:ok?"Disetujui":"Ditolak",catatan:note});
+   x.status=ok?"Disetujui":"Ditolak"; x.catatan=note; updateBadge();
+   const msg=`${ok?"✅ *DISETUJUI*":"❌ *DITOLAK*"}\n${proper(p.to)} ${ok?"menyetujui":"menolak"} permohonan cuti ${proper(p.nama)}\nTanggal: ${p.mulai} (${p.ambil} hari)${note?"\nCatatan: "+note:""}`;
+   const num=normWa(p.wa), txt=encodeURIComponent(msg), mob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+   const href=mob?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
+   $("apvInfo").innerHTML='<div class="apv-done">Tanggapan tersimpan: '+esc(x.status)+'. Status otomatis terlihat oleh pemohon.</div><div style="margin-top:8px"><a class="btn secondary" target="waweb" href="'+esc(href)+'">Kabari pemohon via WhatsApp (opsional)</a></div>';
+   box.querySelector(".apv-btns").hidden=true;
+  }
+  if(!done){ $("apvYes").onclick=()=>reply(true); $("apvNo").onclick=()=>reply(false); }
+ }
+ $("btnInbox").onclick=()=>{ try{ if("Notification" in window&&Notification.permission==="default") Notification.requestPermission(); }catch(e){} openInbox(); };
+ $("inboxClose").onclick=()=>{ $("inboxModal").hidden=true; };
+ $("inboxModal").addEventListener("mousedown",e=>{ if(e.target===$("inboxModal")) $("inboxModal").hidden=true; });
+
+ // start
+ let saved=null; try{ saved=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){}
+ if(saved&&saved.nik&&EMPLOYEES.some(x=>x.nik===saved.nik)){ me=saved.nik; applyUser(); } else showLogin();
+})();
 </script>
 </body></html>
