@@ -2863,7 +2863,7 @@ ttdApply();
  function renderList(){
   $("inboxTitle").textContent="Permintaan Persetujuan"; $("inboxDetail").hidden=true; $("inboxList").hidden=false;
   if(!CLOUD_SYNC_URL){ $("inboxList").innerHTML='<div class="apv-warn">Database cloud belum diatur.</div>'; return; }
-  $("inboxList").innerHTML=items.length?items.map((x,i)=>{ const d=x.data||{}; return `<button type="button" class="inbox-item ${x.status==="Menunggu"?"wait":""}" data-i="${i}"><b>${esc(proper(d.nama||"-"))}<small>${esc(d.bagian||"")} · ${esc(d.mulai||"-")} · ${esc(d.ambil||"-")} hari<br>Pengganti: ${esc(proper(d.pengganti)||"-")}</small></b><span class="apv-st ${x.status==="Disetujui"?"ok":x.status==="Ditolak"?"no":""}">${stLabel(x.status)}</span></button>`; }).join(""):'<div style="padding:8px;font-size:13px;color:#667085">Belum ada permintaan persetujuan untuk Anda.</div>';
+  $("inboxList").innerHTML=items.length?items.map((x,i)=>{ const d=x.data||{}; return `<button type="button" class="inbox-item ${x.status==="Menunggu"?"wait":""}" data-i="${i}"><b>${esc(proper(d.nama||"-"))}<small>${esc(d.bagian||"")} · ${esc(d.mulai||"-")} · ${esc(d.ambil||"-")} hari</small></b><span class="apv-st ${x.status==="Disetujui"?"ok":x.status==="Ditolak"?"no":""}">${stLabel(x.status)}</span></button>`; }).join(""):'<div style="padding:8px;font-size:13px;color:#667085">Belum ada permintaan persetujuan untuk Anda.</div>';
   $("inboxList").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>openDetail(items[b.dataset.i]));
  }
  function openInbox(){ $("inboxModal").hidden=false; renderList(); poll(); }
