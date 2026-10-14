@@ -1207,6 +1207,20 @@ if ('serviceWorker' in navigator) {
 .apv-done{background:#eef7ee;border:1px solid #bfe3c0;color:#1d6b2a;padding:8px 10px;border-radius:8px;font-size:12px;margin-bottom:10px;}
 .apv-card button:disabled{opacity:.5;cursor:default;}
 </style>
+<style id="hist-style">
+#btnHist[hidden]{display:none!important}
+.hist-item{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px}
+.hist-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.hist-top b{font-size:13px;color:#1b3a5c}
+.hist-top small,.hist-sub{font-size:11px;color:#667085}
+.hist-act{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.hist-act button{font-size:12px;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;color:#1b3a5c}
+.hist-act .hp{background:#1f5eff;border-color:#1f5eff;color:#fff;font-weight:600}
+.hist-act .hc{color:#b91c1c;border-color:#fca5a5}
+.apv-res-row .hist-x{color:#b91c1c;border-color:#fca5a5;padding:3px 8px;font-weight:700}
+.apv-res-row .hist-x[hidden]{display:none}
+.hist-empty{padding:12px;font-size:12px;color:#667085;text-align:center}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1254,7 +1268,7 @@ Kelola Database</button></div>
 <div class="date-place" id="pTempatTanggal">Bogor, -</div>
 <div class="approval"><div class="approval-head"><div class="approval-label approval-center-label">Menyetujui / tidak menyetujui</div></div><div class="approval-head" aria-hidden="true"></div><div class="approval-col"><div class="approval-label">Atasan YBS</div><div class="signature-space" id="pAtasanTtd"></div><div class="approval-name approval-name-placeholder" id="pAtasan">&nbsp;</div></div><div class="approval-col"><div class="approval-label">Pemohon</div><div class="signature-space" id="pPemohonTtd"></div><div class="approval-name" id="pPemohon">-</div></div></div>
  </div></div>
- <div class="form-actions no-print"><button class="btn secondary" id="btnReset">Reset</button><button class="btn" id="btnApvOpen" type="button">Kirim</button><button class="btn primary" id="btnPrint">Cetak / Simpan PDF</button></div>
+ <div class="form-actions no-print"><button class="btn secondary" id="btnReset">Reset</button><button class="btn" id="btnApvOpen" type="button">Kirim</button><button class="btn" id="btnHist" type="button" hidden>Riwayat <span id="histCount"></span></button><button class="btn primary" id="btnPrint">Cetak / Simpan PDF</button></div>
  </div>
 </section>
 
@@ -2473,6 +2487,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 
+<div class="apv-overlay no-print" id="histModal" hidden>
+<div class="apv-dialog" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+<div class="apv-dhead"><h3 id="histTitle">Riwayat Pengajuan</h3><button type="button" class="apv-x" id="histClose" aria-label="Tutup">&times;</button></div>
+<div id="histList"></div>
+</div>
+</div>
 <div class="apv-overlay no-print" id="apvModal" hidden>
 <div class="apv-dialog" role="dialog" aria-modal="true" aria-labelledby="apvTitle">
 <div class="apv-dhead"><h3 id="apvTitle">Kirim Persetujuan via WhatsApp</h3><button type="button" class="apv-x" id="apvClose" aria-label="Tutup">&times;</button></div>
@@ -2544,8 +2564,9 @@ function renderApprovedForm(list){
 function paintStatus(list){
  (list||[]).forEach(x=>{
   const el=document.querySelector(`[data-st="${x.id}"]`); if(!el) return;
-  el.className="apv-st"+(x.status==="Disetujui"?" ok":x.status==="Ditolak"?" no":"");
-  el.textContent=x.status==="Disetujui"?"✓ Disetujui":x.status==="Ditolak"?"✗ Ditolak":"Menunggu";
+  el.className="apv-st"+(x.status==="Disetujui"?" ok":(x.status==="Ditolak"||x.status==="Dibatalkan")?" no":"");
+  el.textContent=x.status==="Disetujui"?"✓ Disetujui":x.status==="Ditolak"?"✗ Ditolak":x.status==="Dibatalkan"?"⊘ Dibatalkan":"Menunggu";
+  const xb=el.parentNode&&el.parentNode.querySelector("[data-cancel]"); if(xb) xb.hidden=(x.status!=="Menunggu");
   el.title=x.catatan||"";
  });
 }
@@ -2588,10 +2609,11 @@ function genApprovals(){
   const wa=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
   rows.push({r,url,wa,num,id:p.id}); items.push({id:p.id,nik:r.nik,nama:r.nama,data:p});
  });
- out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><span class="apv-st" data-st="${esc(x.id)}">Menunggu</span><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><span class="apv-st" data-st="${esc(x.id)}">Menunggu</span><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button><button type="button" class="hist-x" data-cancel="${esc(x.id)}" title="Batalkan">✕</button></div>`).join("");
  apvState={nik,group,items}; saveApvState(); renderApprovedForm([]);
- cloudPost({action:"request",group,nikPemohon:nik,namaPemohon:emp.nama,items}).then(()=>{ startApvPoll(); setTimeout(refreshApprovals,4000); });
+ cloudPost({action:"request",group,nikPemohon:nik,namaPemohon:emp.nama,items}).then(()=>{ startApvPoll(); setTimeout(refreshApprovals,4000); histCheck(); });
  out.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{ const u=rows[b.dataset.copy].url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{b.textContent="Tersalin";},()=>{prompt("Salin tautan:",u);}); });
+ out.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{ if(confirm("Batalkan permintaan persetujuan ini?")) histCancel({id:b.dataset.cancel},apvState&&apvState.nik); });
 }
 $("btnApvGen").onclick=genApprovals;
 $("apvFilter").oninput=renderApvList;
@@ -2615,7 +2637,7 @@ renderApvList();
  document.body.appendChild(v);
  const btns=[document.getElementById("apvYes"),document.getElementById("apvNo")];
  const lockUi=(txt)=>{ btns.forEach(b=>b.disabled=true); document.getElementById("apvNote").disabled=true; if(txt) document.getElementById("apvInfo").innerHTML='<div class="apv-done">'+esc(txt)+'</div>'; };
- if(p.id) cloudGet({action:"approvals",id:p.id},j=>{ const row=j&&j.data&&j.data[0]; if(row&&row.status!=="Menunggu") lockUi("Anda sudah memberi tanggapan: "+row.status+"."); });
+ if(p.id) cloudGet({action:"approvals",id:p.id},j=>{ const row=j&&j.data&&j.data[0]; if(row&&row.status==="Dibatalkan") lockUi("Permohonan ini sudah dibatalkan oleh pemohon."); else if(row&&row.status!=="Menunggu") lockUi("Anda sudah memberi tanggapan: "+row.status+"."); });
  async function reply(ok){
   const note=document.getElementById("apvNote").value.trim();
   if(p.id){ lockUi("Menyimpan tanggapan…"); await cloudPost({action:"respond",id:p.id,status:ok?"Disetujui":"Ditolak",catatan:note}); }
@@ -2649,5 +2671,78 @@ renderApvList();
  const orig=renderApvList; window.renderApvList=function(){ orig(); label(); };
  $("btnApvGen").addEventListener("click",()=>{ panel.hidden=true; });
 })();
+</script>
+<script>
+/* ===== Riwayat pengajuan: lihat, batalkan (✕), cetak ulang dengan tanda tangan ===== */
+let histData=[], histTimer=null;
+function histNik(){ return $("nik").value.trim(); }
+function histCheck(){
+ const btn=$("btnHist"), nik=histNik();
+ clearTimeout(histTimer);
+ if(!CLOUD_SYNC_URL||!EMPLOYEES.some(x=>x.nik===nik)){ btn.hidden=true; histData=[]; return; }
+ histTimer=setTimeout(()=>{
+  cloudGet({action:"history",nik},j=>{
+   if(nik!==histNik()) return;
+   histData=(j&&j.data)||[];
+   btn.hidden=!histData.length;
+   $("histCount").textContent=histData.length?"("+histData.length+")":"";
+   if(!$("histModal").hidden) histRender();
+  });
+ },400);
+}
+function fmtWaktu(iso){ try{ return new Intl.DateTimeFormat("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(iso)); }catch(e){ return ""; } }
+function histChip(x){
+ const c=x.status==="Disetujui"?" ok":(x.status==="Ditolak"||x.status==="Dibatalkan")?" no":"";
+ const t=x.status==="Disetujui"?"✓ Disetujui":x.status==="Ditolak"?"✗ Ditolak":x.status==="Dibatalkan"?"⊘ Dibatalkan":"Menunggu";
+ return `<span class="apv-st${c}" title="${esc(x.catatan||"")}">${t}</span>`;
+}
+function histRender(){
+ const box=$("histList");
+ box.innerHTML=histData.length?histData.map((g,i)=>{
+  const d=g.data||{}, pend=g.items.some(x=>x.status==="Menunggu");
+  return `<div class="hist-item"><div class="hist-top"><b>${esc(d.mulai||"Pengajuan cuti")}</b><small>${esc(fmtWaktu(g.waktuKirim))}</small></div>`+
+   `<div class="hist-sub">${d.ambil?esc(d.ambil)+" hari":""}${d.alasan?" · "+esc(proper(d.alasan)):""}</div>`+
+   g.items.map(x=>`<div class="apv-res-row"><b>${esc(proper(x.nama))}</b>${histChip(x)}${x.status==="Menunggu"?`<button type="button" class="hist-x" data-cx-id="${esc(x.id)}" title="Batalkan">✕</button>`:""}</div>`).join("")+
+   `<div class="hist-act">${pend?`<button type="button" class="hc" data-cx-group="${esc(g.group)}">✕ Batalkan pengajuan</button>`:""}${g.data?`<button type="button" class="hp" data-print="${i}">Cetak</button>`:""}</div></div>`;
+ }).join(""):'<div class="hist-empty">Belum ada pengajuan.</div>';
+}
+function histOpen(){ histRender(); $("histModal").hidden=false; }
+function histClose(){ $("histModal").hidden=true; }
+function histCancel(o,nik){
+ cloudPost(Object.assign({action:"cancel",nikPemohon:nik||histNik()},o)).then(()=>{ setTimeout(()=>{ histCheck(); refreshApprovals(); },500); });
+}
+function histPrint(i){
+ const g=histData[i]; if(!g||!g.data) return;
+ const d=g.data;
+ cloudGet({action:"approvals",group:g.group},j=>{
+  if(!j){ alert("Gagal memuat tanda tangan persetujuan. Periksa koneksi lalu coba lagi."); return; }
+  const list=j.data||[];
+  histClose(); stopApvPoll();
+  $("nik").value=d.nik; findEmployee();
+  $("hakCuti").value=d.hak; $("cutiDiambil").value=d.ambil; $("mulaiCuti").value=d.mulai||""; $("masukLagi").value=d.masuk||"";
+  $("alasan").value=d.alasan||""; $("kontak").value=d.kontak||"";
+  const sel=$("pengganti");
+  if(d.pengganti&&![...sel.options].some(o=>o.value===d.pengganti)) sel.add(new Option(d.pengganti,d.pengganti));
+  sel.value=d.pengganti||"";
+  mdcSelected=[]; sync();
+  $("pTempatTanggal").textContent="Bogor, "+new Intl.DateTimeFormat("id-ID",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(g.waktuKirim));
+  apvState={nik:d.nik,group:g.group,items:g.items.map(x=>({id:x.id,nik:x.nik,nama:x.nama}))}; saveApvState();
+  renderApprovedForm(list);
+  if(list.some(x=>x.status==="Menunggu")) startApvPoll();
+  setTimeout(()=>window.print(),400);
+ });
+}
+$("btnHist").onclick=histOpen;
+$("histClose").onclick=histClose;
+$("histModal").addEventListener("mousedown",e=>{ if(e.target===$("histModal")) histClose(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("histModal").hidden) histClose(); });
+$("histList").addEventListener("click",e=>{
+ const cid=e.target.closest("[data-cx-id]"), cg=e.target.closest("[data-cx-group]"), pr=e.target.closest("[data-print]");
+ if(cid){ if(confirm("Batalkan permintaan persetujuan ke penerima ini?")) histCancel({id:cid.dataset.cxId}); }
+ else if(cg){ if(confirm("Batalkan seluruh pengajuan ini? Hanya yang masih menunggu yang dibatalkan.")) histCancel({group:cg.dataset.cxGroup}); }
+ else if(pr) histPrint(Number(pr.dataset.print));
+});
+$("nik").addEventListener("input",histCheck); $("nik").addEventListener("change",histCheck);
+$("btnReset").addEventListener("click",()=>{ $("btnHist").hidden=true; histData=[]; });
 </script>
 </body></html>
