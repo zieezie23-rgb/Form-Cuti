@@ -1185,6 +1185,20 @@ if ('serviceWorker' in navigator) {
 .apv-yes{background:#16a34a;}.apv-no{background:#dc2626;}
 .apv-note{font-size:11px;color:var(--muted);margin-top:10px;}
 </style>
+<style>
+.apv-overlay{position:fixed;inset:0;background:rgba(15,25,45,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9000;}
+.apv-overlay[hidden]{display:none;}
+.apv-dialog{background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:16px 18px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.apv-dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.apv-dhead h3{margin:0;font-size:15px;color:#1b3a5c;}
+.apv-x{border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:#667085;}
+.apv-dd{position:relative;margin:2px 0 10px;}
+.apv-dd-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;text-align:left;}
+.apv-dd-btn i{font-style:normal;color:#667085;}
+.apv-dd-panel{border:1px solid var(--line);border-radius:8px;margin-top:4px;padding:6px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.1);}
+.apv-dd-panel .apv-list{border:0;margin:6px 0 0;max-height:220px;}
+.apv-box{display:none;}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1211,14 +1225,6 @@ if ('serviceWorker' in navigator) {
 <div class="panel-actions no-print"><button type="button" class="btn secondary" id="btnOpenDb"
 onclick="event.preventDefault();var o=document.getElementById('dbModalOverlay');if(o){o.hidden=false;o.style.display='flex';}try{renderDbTable()}catch(e){console.error(e)}">
 Kelola Database</button></div>
-<div class="apv-box no-print" id="apvBox">
-<h3>Kirim Persetujuan via WhatsApp</h3>
-<label class="apv-row"><span>No. WA Anda</span><input id="myWa" inputmode="tel" placeholder="08xxxxxxxxxx"></label>
-<input id="apvFilter" class="apv-filter" placeholder="Cari rekan kerja / atasan…">
-<div id="apvList" class="apv-list"></div>
-<button type="button" class="btn primary apv-go" id="btnApvGen">Siapkan Pesan WhatsApp</button>
-<div id="apvResult" class="apv-result"></div>
-</div>
 </section>
  <section class="paper-wrap">
  <div class="paper-column">
@@ -1240,7 +1246,7 @@ Kelola Database</button></div>
 <div class="date-place" id="pTempatTanggal">Bogor, -</div>
 <div class="approval"><div class="approval-head"><div class="approval-label approval-center-label">Menyetujui / tidak menyetujui</div></div><div class="approval-head" aria-hidden="true"></div><div class="approval-col"><div class="approval-label">Atasan YBS</div><div class="signature-space"></div><div class="approval-name approval-name-placeholder" aria-hidden="true">&nbsp;</div></div><div class="approval-col"><div class="approval-label">Pemohon</div><div class="signature-space" id="pPemohonTtd"></div><div class="approval-name" id="pPemohon">-</div></div></div>
  </div></div>
- <div class="form-actions no-print"><button class="btn secondary" id="btnReset">Reset</button><button class="btn primary" id="btnPrint">Cetak / Simpan PDF</button></div>
+ <div class="form-actions no-print"><button class="btn secondary" id="btnReset">Reset</button><button class="btn" id="btnApvOpen" type="button">Kirim</button><button class="btn primary" id="btnPrint">Cetak / Simpan PDF</button></div>
  </div>
 </section>
 
@@ -2459,6 +2465,21 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 
+<div class="apv-overlay no-print" id="apvModal" hidden>
+<div class="apv-dialog" role="dialog" aria-modal="true" aria-labelledby="apvTitle">
+<div class="apv-dhead"><h3 id="apvTitle">Kirim Persetujuan via WhatsApp</h3><button type="button" class="apv-x" id="apvClose" aria-label="Tutup">&times;</button></div>
+<label class="apv-row"><span>No. WA Anda</span><input id="myWa" inputmode="tel" placeholder="08xxxxxxxxxx"></label>
+<div class="apv-dd" id="apvDd">
+<button type="button" class="apv-dd-btn" id="apvDdBtn"><span id="apvDdLabel">Pilih penerima (rekan / atasan)</span><i>&#9662;</i></button>
+<div class="apv-dd-panel" id="apvDdPanel" hidden>
+<input id="apvFilter" class="apv-filter" placeholder="Cari nama / bagian…">
+<div id="apvList" class="apv-list"></div>
+</div>
+</div>
+<button type="button" class="btn primary apv-go" id="btnApvGen">Kirim</button>
+<div id="apvResult" class="apv-result"></div>
+</div>
+</div>
 <script>
 /* ===== Persetujuan via WhatsApp (tanpa server; data ikut di tautan) ===== */
 function normWa(v){ let n=String(v==null?"":v).replace(/\D/g,""); if(!n) return ""; if(n.startsWith("0")) n="62"+n.slice(1); else if(n.startsWith("8")) n="62"+n; return n; }
@@ -2502,7 +2523,7 @@ function genApprovals(){
   const wa=num?`https://wa.me/${num}?text=${encodeURIComponent(buildMsg(p,url))}`:`https://wa.me/?text=${encodeURIComponent(buildMsg(p,url))}`;
   rows.push({r,url,wa,num});
  });
- out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="_blank" rel="noopener" href="${esc(x.wa)}">${x.num?"Kirim WA":"Pilih kontak WA"}</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="_blank" rel="noopener" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
  out.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{ const u=rows[b.dataset.copy].url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{b.textContent="Tersalin";},()=>{prompt("Salin tautan:",u);}); });
 }
 $("btnApvGen").onclick=genApprovals;
@@ -2530,6 +2551,24 @@ renderApvList();
  }
  document.getElementById("apvYes").onclick=()=>reply(true);
  document.getElementById("apvNo").onclick=()=>reply(false);
+})();
+
+/* ----- popup & dropdown penerima ----- */
+(function(){
+ const modal=$("apvModal"), panel=$("apvDdPanel");
+ function label(){ const n=$("apvList").querySelectorAll("input:checked").length; $("apvDdLabel").textContent=n?n+" penerima dipilih":"Pilih penerima (rekan / atasan)"; }
+ function openM(){ renderApvList(); const me=WA[$("nik").value.trim()]; if(me&&!$("myWa").value) $("myWa").value=me; modal.hidden=false; label(); }
+ function closeM(){ modal.hidden=true; panel.hidden=true; }
+ $("btnApvOpen").onclick=openM;
+ $("apvClose").onclick=closeM;
+ modal.addEventListener("mousedown",e=>{ if(e.target===modal) closeM(); });
+ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!modal.hidden) closeM(); });
+ $("apvDdBtn").onclick=()=>{ panel.hidden=!panel.hidden; if(!panel.hidden) $("apvFilter").focus(); };
+ $("apvDd").addEventListener("mousedown",e=>e.stopPropagation());
+ modal.addEventListener("mousedown",()=>{ panel.hidden=true; });
+ $("apvList").addEventListener("change",label);
+ const orig=renderApvList; window.renderApvList=function(){ orig(); label(); };
+ $("btnApvGen").addEventListener("click",()=>{ panel.hidden=true; });
 })();
 </script>
 </body></html>
