@@ -2520,10 +2520,11 @@ function genApprovals(){
   const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama};
   const url=baseUrl()+"?approve="+b64enc(p);
   const num=WA[r.nik];
-  const wa=num?`https://wa.me/${num}?text=${encodeURIComponent(buildMsg(p,url))}`:`https://wa.me/?text=${encodeURIComponent(buildMsg(p,url))}`;
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent), txt=encodeURIComponent(buildMsg(p,url));
+  const wa=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
   rows.push({r,url,wa,num});
  });
- out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="_blank" rel="noopener" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
  out.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{ const u=rows[b.dataset.copy].url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{b.textContent="Tersalin";},()=>{prompt("Salin tautan:",u);}); });
 }
 $("btnApvGen").onclick=genApprovals;
