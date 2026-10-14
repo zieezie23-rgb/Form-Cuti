@@ -1199,6 +1199,14 @@ if ('serviceWorker' in navigator) {
 .apv-dd-panel .apv-list{border:0;margin:6px 0 0;max-height:220px;}
 .apv-box{display:none;}
 </style>
+<style>
+.apv-st{font-size:11px;padding:2px 8px;border-radius:999px;background:#eef1f6;color:#667085;white-space:nowrap;}
+.apv-st.ok{background:#dcfce7;color:#15803d;font-weight:600;}
+.apv-st.no{background:#fee2e2;color:#b91c1c;font-weight:600;}
+.paper #pAtasanTtd img{max-width:46%;}
+.apv-done{background:#eef7ee;border:1px solid #bfe3c0;color:#1d6b2a;padding:8px 10px;border-radius:8px;font-size:12px;margin-bottom:10px;}
+.apv-card button:disabled{opacity:.5;cursor:default;}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1244,7 +1252,7 @@ Kelola Database</button></div>
 <div class="row"><div class="label">PENGGANTI SELAMA CUTI</div><div class="colon">:</div><div class="value" id="pPengganti">-</div></div>
 </div>
 <div class="date-place" id="pTempatTanggal">Bogor, -</div>
-<div class="approval"><div class="approval-head"><div class="approval-label approval-center-label">Menyetujui / tidak menyetujui</div></div><div class="approval-head" aria-hidden="true"></div><div class="approval-col"><div class="approval-label">Atasan YBS</div><div class="signature-space"></div><div class="approval-name approval-name-placeholder" aria-hidden="true">&nbsp;</div></div><div class="approval-col"><div class="approval-label">Pemohon</div><div class="signature-space" id="pPemohonTtd"></div><div class="approval-name" id="pPemohon">-</div></div></div>
+<div class="approval"><div class="approval-head"><div class="approval-label approval-center-label">Menyetujui / tidak menyetujui</div></div><div class="approval-head" aria-hidden="true"></div><div class="approval-col"><div class="approval-label">Atasan YBS</div><div class="signature-space" id="pAtasanTtd"></div><div class="approval-name approval-name-placeholder" id="pAtasan">&nbsp;</div></div><div class="approval-col"><div class="approval-label">Pemohon</div><div class="signature-space" id="pPemohonTtd"></div><div class="approval-name" id="pPemohon">-</div></div></div>
  </div></div>
  <div class="form-actions no-print"><button class="btn secondary" id="btnReset">Reset</button><button class="btn" id="btnApvOpen" type="button">Kirim</button><button class="btn primary" id="btnPrint">Cetak / Simpan PDF</button></div>
  </div>
@@ -2500,6 +2508,62 @@ function renderApvList(){
 function buildMsg(p,url){
  return `Assalamualaikum ${proper(p.to)},\nMohon persetujuan cuti:\n*${proper(p.nama)}* (${p.bagian})\nTanggal: ${p.mulai||"-"}\nLama: ${p.ambil} hari\nAlasan: ${proper(p.alasan)||"-"}\nPengganti: ${proper(p.pengganti)||"-"}\n\nBuka tautan untuk menyetujui / menolak:\n${url}`;
 }
+
+/* ===== Status persetujuan di cloud (Google Sheets) ===== */
+function cloudGet(params,cb){
+ if(!CLOUD_SYNC_URL){ cb(null); return; }
+ const name="apvCb_"+Date.now()+"_"+Math.random().toString(36).slice(2); let done=false;
+ const sc=document.createElement("script");
+ const end=(v)=>{ if(done) return; done=true; try{delete window[name];}catch(e){window[name]=undefined;} if(sc.parentNode) sc.parentNode.removeChild(sc); cb(v); };
+ window[name]=(j)=>end(j&&j.ok?j:null);
+ sc.onerror=()=>end(null);
+ sc.src=CLOUD_SYNC_URL+"?"+Object.keys(params).map(k=>k+"="+encodeURIComponent(params[k])).join("&")+"&callback="+name+"&_="+Date.now();
+ document.body.appendChild(sc); setTimeout(()=>end(null),15000);
+}
+function cloudPost(obj){
+ return new Promise(resolve=>{
+  if(!CLOUD_SYNC_URL){ resolve(false); return; }
+  const ifr=document.createElement("iframe"); ifr.name="apvPost_"+Date.now()+Math.random().toString(36).slice(2); ifr.style.display="none"; document.body.appendChild(ifr);
+  const f=document.createElement("form"); f.method="POST"; f.action=CLOUD_SYNC_URL; f.target=ifr.name; f.style.display="none";
+  const i=document.createElement("input"); i.type="hidden"; i.name="payload"; i.value=JSON.stringify(obj); f.appendChild(i); document.body.appendChild(f);
+  let fin=false; const end=(ok)=>{ if(fin) return; fin=true; setTimeout(()=>{ f.remove(); ifr.remove(); },500); resolve(ok); };
+  ifr.onload=()=>end(true); setTimeout(()=>end(true),3000);
+  try{ f.submit(); }catch(e){ end(false); }
+ });
+}
+let apvState=null; try{ apvState=JSON.parse(localStorage.getItem("cuti_apv")||"null"); }catch(e){ apvState=null; }
+function saveApvState(){ try{ if(apvState) localStorage.setItem("cuti_apv",JSON.stringify(apvState)); else localStorage.removeItem("cuti_apv"); }catch(e){} }
+let apvTimer=null;
+function renderApprovedForm(list){
+ const tw=$("pAtasanTtd"), nm=$("pAtasan");
+ const ok=(list||[]).filter(x=>x.status==="Disetujui");
+ if(!ok.length){ tw.innerHTML=""; nm.innerHTML="&nbsp;"; return; }
+ tw.innerHTML=ok.filter(x=>x.ttd).map(x=>`<img src="${esc(x.ttd)}" alt="Tanda tangan ${esc(x.nama)}">`).join("");
+ nm.textContent=ok.map(x=>proper(x.nama)).join(" / ");
+}
+function paintStatus(list){
+ (list||[]).forEach(x=>{
+  const el=document.querySelector(`[data-st="${x.id}"]`); if(!el) return;
+  el.className="apv-st"+(x.status==="Disetujui"?" ok":x.status==="Ditolak"?" no":"");
+  el.textContent=x.status==="Disetujui"?"✓ Disetujui":x.status==="Ditolak"?"✗ Ditolak":"Menunggu";
+  el.title=x.catatan||"";
+ });
+}
+function refreshApprovals(){
+ if(!apvState||apvState.nik!==$("nik").value.trim()) return;
+ cloudGet({action:"approvals",group:apvState.group},j=>{
+  if(!j) return;
+  paintStatus(j.data); renderApprovedForm(j.data);
+  if(!j.data.some(x=>x.status==="Menunggu")) stopApvPoll();
+ });
+}
+function startApvPoll(){ stopApvPoll(); apvTimer=setInterval(()=>{ if(!document.hidden) refreshApprovals(); },15000); }
+function stopApvPoll(){ if(apvTimer){ clearInterval(apvTimer); apvTimer=null; } }
+function apvOnNik(){
+ const nik=$("nik").value.trim();
+ if(apvState&&apvState.nik===nik){ refreshApprovals(); startApvPoll(); }
+ else { stopApvPoll(); renderApprovedForm([]); }
+}
 function genApprovals(){
  const out=$("apvResult"); out.innerHTML="";
  const nik=$("nik").value.trim(), emp=EMPLOYEES.find(x=>x.nik===nik);
@@ -2514,23 +2578,27 @@ function genApprovals(){
  WA[nik]=my; saveWa(); renderApvList();
  picks.forEach(r=>{ const c=$("apvList").querySelector(`input[value="${r.nik}"]`); if(c) c.checked=true; });
  const hak=Number($("hakCuti").value||0), ambil=Number($("cutiDiambil").value||0);
- let html=""; const rows=[];
+ let html=""; const rows=[]; const group="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); const items=[];
  if(!/^https?:/.test(location.protocol)) html+='<div class="apv-warn">Aplikasi masih dibuka dari file lokal. Tautan baru bisa dibuka penerima setelah aplikasi di-hosting online (mis. GitHub Pages / Cloudflare Pages).</div>';
  picks.forEach(r=>{
-  const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama};
+  const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama,toNik:r.nik,grp:group};
   const url=baseUrl()+"?approve="+b64enc(p);
   const num=WA[r.nik];
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent), txt=encodeURIComponent(buildMsg(p,url));
   const wa=isMobile?(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`):(num?`https://web.whatsapp.com/send?phone=${num}&text=${txt}`:`https://web.whatsapp.com/send?text=${txt}`);
-  rows.push({r,url,wa,num});
+  rows.push({r,url,wa,num,id:p.id}); items.push({id:p.id,nik:r.nik,nama:r.nama});
  });
- out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><span class="apv-st" data-st="${esc(x.id)}">Menunggu</span><a class="wa" target="waweb" href="${esc(x.wa)}">Kirim</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ apvState={nik,group,items}; saveApvState(); renderApprovedForm([]);
+ cloudPost({action:"request",group,nikPemohon:nik,namaPemohon:emp.nama,items}).then(()=>{ startApvPoll(); setTimeout(refreshApprovals,4000); });
  out.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{ const u=rows[b.dataset.copy].url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{b.textContent="Tersalin";},()=>{prompt("Salin tautan:",u);}); });
 }
 $("btnApvGen").onclick=genApprovals;
 $("apvFilter").oninput=renderApvList;
 $("nik").addEventListener("input",()=>{ renderApvList(); if(WA[$("nik").value.trim()]) $("myWa").value=WA[$("nik").value.trim()]; });
 $("nik").addEventListener("change",()=>{ renderApvList(); if(WA[$("nik").value.trim()]) $("myWa").value=WA[$("nik").value.trim()]; });
+$("nik").addEventListener("change",apvOnNik); $("nik").addEventListener("input",apvOnNik);
+$("btnReset").addEventListener("click",()=>{ stopApvPoll(); apvState=null; saveApvState(); renderApprovedForm([]); const o=$("apvResult"); if(o) o.innerHTML=""; });
 renderApvList();
 
 /* ----- Tampilan penerima (atasan / rekan) ----- */
@@ -2542,10 +2610,14 @@ renderApvList();
  const v=document.createElement("div"); v.id="apvView";
  if(!p||!p.nama){ v.innerHTML='<div class="apv-card"><h1>Tautan tidak valid</h1><p class="sub">Minta pemohon mengirim ulang tautan persetujuan.</p></div>'; document.body.appendChild(v); return; }
  const rows=[["Pemohon",proper(p.nama)+" ("+esc(p.nik)+")"],["Bagian",p.bagian],["Mulai kerja",formatDate(p.tglMasuk)],["Tanggal cuti",p.mulai],["Lama",p.ambil+" hari"],["Masuk kembali",formatDate(p.masuk)],["Sisa cuti",p.sisa+" hari"],["Alasan",proper(p.alasan)||"-"],["Alamat / kontak",p.kontak||"-"],["Pengganti",proper(p.pengganti)||"-"]];
- v.innerHTML=`<div class="apv-card"><h1>Persetujuan Cuti</h1><div class="sub">Halo ${esc(proper(p.to))}, mohon tanggapan Anda.</div><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table><textarea id="apvNote" placeholder="Catatan (opsional)"></textarea><div class="apv-btns"><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div><div class="apv-note">Tombol akan membuka WhatsApp dengan jawaban siap kirim ke ${esc(proper(p.nama))}.</div></div>`;
+ v.innerHTML=`<div class="apv-card"><h1>Persetujuan Cuti</h1><div class="sub">Halo ${esc(proper(p.to))}, mohon tanggapan Anda.</div><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table><textarea id="apvNote" placeholder="Catatan (opsional)"></textarea><div id="apvInfo"></div><div class="apv-btns"><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div><div class="apv-note">Tombol akan membuka WhatsApp dengan jawaban siap kirim ke ${esc(proper(p.nama))}.</div></div>`;
  document.body.appendChild(v);
- function reply(ok){
+ const btns=[document.getElementById("apvYes"),document.getElementById("apvNo")];
+ const lockUi=(txt)=>{ btns.forEach(b=>b.disabled=true); document.getElementById("apvNote").disabled=true; if(txt) document.getElementById("apvInfo").innerHTML='<div class="apv-done">'+esc(txt)+'</div>'; };
+ if(p.id) cloudGet({action:"approvals",id:p.id},j=>{ const row=j&&j.data&&j.data[0]; if(row&&row.status!=="Menunggu") lockUi("Anda sudah memberi tanggapan: "+row.status+"."); });
+ async function reply(ok){
   const note=document.getElementById("apvNote").value.trim();
+  if(p.id){ lockUi("Menyimpan tanggapan…"); await cloudPost({action:"respond",id:p.id,status:ok?"Disetujui":"Ditolak",catatan:note}); }
   const msg=`${ok?"✅ *DISETUJUI*":"❌ *DITOLAK*"}\n${proper(p.to)} ${ok?"menyetujui":"menolak"} permohonan cuti ${proper(p.nama)}\nTanggal: ${p.mulai} (${p.ambil} hari)${note?"\nCatatan: "+note:""}\nRef: ${p.id}`;
   const num=normWa(p.wa);
   location.href=(num?`https://wa.me/${num}`:`https://wa.me/`)+"?text="+encodeURIComponent(msg);

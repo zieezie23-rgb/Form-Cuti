@@ -1,5 +1,5 @@
 // Service worker sederhana: cache-first agar aplikasi tetap bisa dibuka offline.
-const CACHE_NAME = 'form-cuti-v6';
+const CACHE_NAME = 'form-cuti-v7';
 const CORE_ASSETS = [
   './',
   './index.html',
