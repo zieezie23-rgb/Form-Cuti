@@ -5,7 +5,7 @@ Dibuat dari struktur Form Cuti.xlsm.
 Fitur:
 - Pencarian NIK dari database KARYAWAN.
 - Nama, bagian, tanggal masuk otomatis.
-- Hak cuti default 6 hari sesuai sheet FORM.
+- Hak cuti default 0
 - Sisa cuti otomatis.
 - Preview form.
 - Cetak / Simpan PDF A4 satu halaman.
@@ -19,6 +19,6 @@ Cara pakai:
 4. Isi data cuti.
 5. Klik Cetak / Simpan PDF.
 6. Pilih Save to PDF atau Microsoft Print to PDF.
-
+s
 Catatan:
 Database karyawan dari sheet KARYAWAN sudah ditanam langsung ke index.html.
