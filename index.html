@@ -1154,6 +1154,37 @@ if ('serviceWorker' in navigator) {
 @media(max-width:600px){.app-guide{margin-top:16px;padding:15px}.app-guide ol{font-size:11px}.app-footer{font-size:10px;padding-bottom:14px}}
 @media print{.app-guide,.app-footer{display:none!important}}
 </style>
+<style>
+.apv-box{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+.apv-box h3{margin:0 0 10px;font-size:14px;color:#1b3a5c;}
+.apv-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:8px;}
+.apv-row span{flex:0 0 80px;}
+.apv-row input,.apv-filter{flex:1;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;width:100%;}
+.apv-list{max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:4px;}
+.apv-item{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:12px;border-radius:6px;cursor:pointer;}
+.apv-item:hover{background:#f1f5fb;}
+.apv-item small{color:var(--muted);margin-left:auto;font-size:10px;}
+.apv-item.nowa small{color:#c0392b;}
+.apv-go{width:100%;}
+.apv-result{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;}
+.apv-res-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;}
+.apv-res-row b{flex:1;}
+.apv-res-row a,.apv-res-row button{font-size:12px;padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;text-decoration:none;color:#1b3a5c;}
+.apv-res-row a.wa{background:#25d366;border-color:#25d366;color:#fff;font-weight:600;}
+.apv-warn{font-size:11px;color:#b45309;background:#fff7e6;border:1px solid #f5d08a;padding:6px 8px;border-radius:8px;}
+#apvView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);}
+.apv-card{background:#fff;border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;padding:20px;box-shadow:0 6px 24px rgba(20,40,80,.08);}
+.apv-card h1{font-size:19px;margin:0 0 4px;color:#1b3a5c;}
+.apv-card .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+.apv-card table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;}
+.apv-card td{padding:6px 4px;border-bottom:1px solid #eef0f4;vertical-align:top;}
+.apv-card td:first-child{color:var(--muted);width:42%;}
+.apv-card textarea{width:100%;min-height:60px;font:inherit;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;}
+.apv-btns{display:flex;gap:10px;}
+.apv-btns button{flex:1;padding:12px;border:0;border-radius:10px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;}
+.apv-yes{background:#16a34a;}.apv-no{background:#dc2626;}
+.apv-note{font-size:11px;color:var(--muted);margin-top:10px;}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1180,6 +1211,14 @@ if ('serviceWorker' in navigator) {
 <div class="panel-actions no-print"><button type="button" class="btn secondary" id="btnOpenDb"
 onclick="event.preventDefault();var o=document.getElementById('dbModalOverlay');if(o){o.hidden=false;o.style.display='flex';}try{renderDbTable()}catch(e){console.error(e)}">
 Kelola Database</button></div>
+<div class="apv-box no-print" id="apvBox">
+<h3>Kirim Persetujuan via WhatsApp</h3>
+<label class="apv-row"><span>No. WA Anda</span><input id="myWa" inputmode="tel" placeholder="08xxxxxxxxxx"></label>
+<input id="apvFilter" class="apv-filter" placeholder="Cari rekan kerja / atasan…">
+<div id="apvList" class="apv-list"></div>
+<button type="button" class="btn primary apv-go" id="btnApvGen">Siapkan Pesan WhatsApp</button>
+<div id="apvResult" class="apv-result"></div>
+</div>
 </section>
  <section class="paper-wrap">
  <div class="paper-column">
@@ -1252,6 +1291,7 @@ onclick="openSpreadsheetWithPin(event)">Database<span class="badge-alert">!</spa
 <label>Nama<input id="fNama"></label>
 <label>Bagian<input id="fBagian"></label>
 <label>Tgl Mulai Kerja<input id="fTglMasuk" type="date"></label>
+<label>No. WhatsApp<input id="fWa" inputmode="tel" placeholder="08xxxxxxxxxx"></label>
 <label>Tanda Tangan (gambar)<span class="ttd-upload-row"><input id="fTtd" type="file" accept="image/*"><button type="button" class="small-btn" id="btnBuatTtd">Buat TTD</button></span></label>
 <label>Pratinjau Tanda Tangan<img id="fTtdPreview" style="display:none;max-height:56px;max-width:160px;object-fit:contain;border:1px solid var(--line);border-radius:6px;padding:4px;"></label>
 </div>
@@ -1266,6 +1306,7 @@ onclick="openSpreadsheetWithPin(event)">Database<span class="badge-alert">!</spa
 <th class="sortable" data-sort="bagian">Bagian<span class="sort-ind"></span></th>
 <th class="sortable" data-sort="tglMasuk">Tgl Mulai Kerja<span class="sort-ind"></span></th>
 <th>Tanda Tangan</th>
+<th>WhatsApp</th>
 <th>Aksi</th>
 </tr></thead>
 <tbody id="empTableBody"></tbody>
@@ -1607,7 +1648,7 @@ function renderDbTable(filter){
   const lockSvg=e.locked
    ? '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="10.5" width="17" height="10.5" rx="2"/><path d="M7 10.5V7a5 5 0 0 1 10 0v3.5"/><circle cx="12" cy="15.7" r="1" fill="currentColor" stroke="none"/><path d="M12 16.7v2"/></svg>'
    : '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="10.5" width="17" height="10.5" rx="2"/><path d="M7 10.5V7a5 5 0 0 1 9.7-1.8"/><path d="M16.7 5.2A5 5 0 0 1 17 7v3.5"/></svg>';
-  tr.innerHTML=`<td>${e.nik}</td><td>${e.nama}</td><td>${e.bagian}</td><td>${formatDate(e.tglMasuk)}</td><td>${e.tandaTangan?`<img class="ttd-thumb" src="${e.tandaTangan}">`:'<span class="muted">-</span>'}</td><td class="row-actions"><button type="button" class="${lockCls}" title="${lockTitle}" data-lock="${e.nik}">${lockSvg}</button> <button class="small-btn" data-edit="${e.nik}" ${dis}>Edit</button><button class="small-btn danger" data-del="${e.nik}" ${dis}>Hapus</button></td>`;
+  tr.innerHTML=`<td>${e.nik}</td><td>${e.nama}</td><td>${e.bagian}</td><td>${formatDate(e.tglMasuk)}</td><td>${e.tandaTangan?`<img class="ttd-thumb" src="${e.tandaTangan}">`:'<span class="muted">-</span>'}</td><td>${(typeof WA!=="undefined"&&WA[e.nik])||'<span class="muted">-</span>'}</td><td class="row-actions"><button type="button" class="${lockCls}" title="${lockTitle}" data-lock="${e.nik}">${lockSvg}</button> <button class="small-btn" data-edit="${e.nik}" ${dis}>Edit</button><button class="small-btn danger" data-del="${e.nik}" ${dis}>Hapus</button></td>`;
   tbody.appendChild(tr);
  });
 }
@@ -1619,11 +1660,11 @@ function openEmpForm(nik){
  if(nik){
   const e=EMPLOYEES.find(x=>x.nik===nik);
   $("empFormTitle").textContent="Edit Karyawan";
-  $("fNik").value=e.nik; $("fNama").value=e.nama; $("fBagian").value=e.bagian; $("fTglMasuk").value=e.tglMasuk; $("fOrigNik").value=e.nik;
+  $("fWa").value=(typeof WA!=="undefined"&&WA[e.nik])||""; $("fNik").value=e.nik; $("fNama").value=e.nama; $("fBagian").value=e.bagian; $("fTglMasuk").value=e.tglMasuk; $("fOrigNik").value=e.nik;
   if(e.tandaTangan){ $("fTtdPreview").src=e.tandaTangan; $("fTtdPreview").style.display="inline-block"; pendingTtd=e.tandaTangan; } else { $("fTtdPreview").style.display="none"; $("fTtdPreview").src=""; }
  } else {
   $("empFormTitle").textContent="Tambah Karyawan";
-  ["fNik","fNama","fBagian","fTglMasuk","fOrigNik"].forEach(id=>$(id).value="");
+  ["fNik","fNama","fBagian","fTglMasuk","fWa","fOrigNik"].forEach(id=>$(id).value="");
   $("fTtdPreview").style.display="none"; $("fTtdPreview").src="";
  }
  $("fTtd").value="";
@@ -1640,7 +1681,9 @@ function saveEmp(){
   const record={nama,nik,bagian,tglMasuk,tandaTangan:finalTtd,locked:oldEmp?!!oldEmp.locked:false};
  if(origNik){ const idx=EMPLOYEES.findIndex(x=>x.nik===origNik); EMPLOYEES[idx]=record; }
  else { EMPLOYEES.push(record); }
- closeEmpForm(); refreshAfterDbChange(); saveToCloud();
+ if(origNik&&origNik!==nik) delete WA[origNik];
+ const wn=normWa($("fWa").value); if(wn) WA[nik]=wn; else delete WA[nik]; saveWa();
+ closeEmpForm(); refreshAfterDbChange(); saveToCloud(); renderApvList();
 }
 function deleteEmp(nik){
  const e=EMPLOYEES.find(x=>x.nik===nik); if(!e) return;
@@ -1650,7 +1693,7 @@ function deleteEmp(nik){
  refreshAfterDbChange(); saveToCloud();
 }
 function exportDb(){
- const rows=EMPLOYEES.map(e=>({NIK:e.nik,Nama:e.nama,Bagian:e.bagian,"Tgl Mulai Kerja":e.tglMasuk||"","Tanda Tangan (base64)":e.tandaTangan||"",Locked:e.locked?"YA":"TIDAK"}));
+ const rows=EMPLOYEES.map(e=>({NIK:e.nik,Nama:e.nama,Bagian:e.bagian,"Tgl Mulai Kerja":e.tglMasuk||"","No. WhatsApp":WA[e.nik]||"","Tanda Tangan (base64)":e.tandaTangan||"",Locked:e.locked?"YA":"TIDAK"}));
  const ws=XLSX.utils.json_to_sheet(rows);
  ws["!cols"]=[{wch:14},{wch:26},{wch:20},{wch:14},{wch:20}];
  const wb=XLSX.utils.book_new();
@@ -1671,6 +1714,7 @@ function importDb(file){
     tglMasuk:formatExcelDate(r["Tgl Mulai Kerja"]),
     tandaTangan:String(r["Tanda Tangan (base64)"]??"").trim()||null
    })).filter(r=>r.nik);
+   rows.forEach(r=>{const k=String(r["NIK"]??"").trim(),w=normWa(r["No. WhatsApp"]); if(k&&w) WA[k]=w;}); saveWa();
    if(!imported.length) throw new Error("Tidak ada baris data yang valid");
    // Import tidak pernah boleh membuka record yang sudah terkunci.
    const existingByNik=new Map(EMPLOYEES.map(e=>[e.nik,e]));
@@ -1919,6 +1963,7 @@ function normalizeEmployee_(e){
   bagian: e.bagian==null ? "" : String(e.bagian),
   tglMasuk: e.tglMasuk==null ? "" : String(e.tglMasuk),
   tandaTangan: e.tandaTangan || null,
+  wa: normWa(e.wa||e.noWa||e.no_wa||e.whatsapp||e.noWhatsapp||e["No. WhatsApp"]||e["No WA"]||e.hp||e.noHp||e.telp||e.telepon||e.phone||""),
   locked: e.locked === true || String(e.locked).toLowerCase() === "true" || String(e.locked).toLowerCase() === "ya"
  };
 }
@@ -1938,6 +1983,7 @@ function loadFromCloud(){
    if(!json || !json.ok) throw new Error((json&&json.error)||"Respon cloud tidak valid");
    if(Array.isArray(json.data)){
     EMPLOYEES=json.data.map(normalizeEmployee_).filter(Boolean);
+    EMPLOYEES.forEach(e=>{ if(e.wa) WA[e.nik]=e.wa; }); saveWa(); takeSnap();
     refreshAfterDbChange();
     localStorage.setItem("cuti_employees",JSON.stringify(EMPLOYEES));
    }
@@ -1976,8 +2022,17 @@ function loadFromCloud(){
  },15000);
 }
 
+let cloudSnap=null; // salinan terakhir yang diketahui ada di cloud: nik -> JSON record
+function cloudRec(e){ return {nik:e.nik,nama:e.nama,bagian:e.bagian,tglMasuk:e.tglMasuk||"",tandaTangan:e.tandaTangan||null,locked:!!e.locked,wa:(typeof WA!=="undefined"&&WA[e.nik])||e.wa||""}; }
+function takeSnap(){ cloudSnap=new Map(EMPLOYEES.map(e=>[e.nik,JSON.stringify(cloudRec(e))])); }
 function saveToCloud(){
  if(!CLOUD_SYNC_URL) return Promise.resolve(false);
+ // Hanya kirim data baru / berubah / dihapus.
+ const cur=new Map(EMPLOYEES.map(e=>[e.nik,cloudRec(e)]));
+ const upserts=[], deletes=[];
+ cur.forEach((rec,nik)=>{ if(!cloudSnap||cloudSnap.get(nik)!==JSON.stringify(rec)) upserts.push(rec); });
+ if(cloudSnap) cloudSnap.forEach((_,nik)=>{ if(!cur.has(nik)) deletes.push(nik); });
+ if(!upserts.length&&!deletes.length){ setSyncStatus("ok"); return Promise.resolve(true); }
  setSyncStatus("saving");
 
  return new Promise((resolve)=>{
@@ -1995,7 +2050,7 @@ function saveToCloud(){
   const input=document.createElement("input");
   input.type="hidden";
   input.name="payload";
-  input.value=JSON.stringify(EMPLOYEES);
+  input.value=JSON.stringify({upserts:upserts,deletes:deletes});
 
   form.appendChild(input);
   document.body.appendChild(form);
@@ -2004,6 +2059,7 @@ function saveToCloud(){
   const finish=(ok)=>{
    if(done) return;
    done=true;
+   if(ok){ if(!cloudSnap) cloudSnap=new Map(); upserts.forEach(x=>cloudSnap.set(x.nik,JSON.stringify(x))); deletes.forEach(n=>cloudSnap.delete(n)); }
    setSyncStatus(ok ? "ok" : "error");
    setTimeout(()=>{
     if(form.parentNode) form.parentNode.removeChild(form);
@@ -2403,4 +2459,77 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 
+<script>
+/* ===== Persetujuan via WhatsApp (tanpa server; data ikut di tautan) ===== */
+function normWa(v){ let n=String(v==null?"":v).replace(/\D/g,""); if(!n) return ""; if(n.startsWith("0")) n="62"+n.slice(1); else if(n.startsWith("8")) n="62"+n; return n; }
+let WA={}; try{ WA=JSON.parse(localStorage.getItem("cuti_wa")||"{}")||{}; }catch(e){ WA={}; }
+function saveWa(){ try{ localStorage.setItem("cuti_wa",JSON.stringify(WA)); }catch(e){} }
+function esc(x){ return String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function b64enc(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function b64dec(t){ t=t.replace(/-/g,"+").replace(/_/g,"/"); while(t.length%4) t+="="; return JSON.parse(decodeURIComponent(escape(atob(t)))); }
+function baseUrl(){ return location.origin+location.pathname; }
+function renderApvList(){
+ const box=$("apvList"); if(!box) return;
+ const q=($("apvFilter").value||"").toLowerCase(), me=$("nik").value.trim();
+ const checked=new Set([...box.querySelectorAll("input:checked")].map(i=>i.value));
+ const rows=EMPLOYEES.filter(e=>e.nik!==me&&(!q||e.nama.toLowerCase().includes(q)||e.bagian.toLowerCase().includes(q)))
+  .sort((a,b)=>((b.bagian==="Supervisor")-(a.bagian==="Supervisor"))||a.nama.localeCompare(b.nama));
+ box.innerHTML=rows.map(e=>`<label class="apv-item ${WA[e.nik]?"":"nowa"}"><input type="checkbox" value="${esc(e.nik)}" ${checked.has(e.nik)?"checked":""}>${esc(proper(e.nama))}<small>${esc(e.bagian)}${WA[e.nik]?"":" · no. WA kosong"}</small></label>`).join("")||'<div style="padding:8px;font-size:12px;color:#667085">Tidak ada data.</div>';
+}
+function buildMsg(p,url){
+ return `Assalamualaikum ${proper(p.to)},\nMohon persetujuan cuti:\n*${proper(p.nama)}* (${p.bagian})\nTanggal: ${p.mulai||"-"}\nLama: ${p.ambil} hari\nAlasan: ${proper(p.alasan)||"-"}\nPengganti: ${proper(p.pengganti)||"-"}\n\nBuka tautan untuk menyetujui / menolak:\n${url}`;
+}
+function genApprovals(){
+ const out=$("apvResult"); out.innerHTML="";
+ const nik=$("nik").value.trim(), emp=EMPLOYEES.find(x=>x.nik===nik);
+ const picks=[...$("apvList").querySelectorAll("input:checked")].map(i=>EMPLOYEES.find(x=>x.nik===i.value)).filter(Boolean);
+ const warn=m=>{ out.innerHTML='<div class="apv-warn">'+esc(m)+'</div>'; };
+ if(!emp) return warn("Pilih NIK pemohon dulu.");
+ if(!$("cutiDiambil").value||Number($("cutiDiambil").value)<=0) return warn("Isi jumlah Cuti yang Diambil.");
+ if(!$("mulaiCuti").value) return warn("Pilih tanggal Cuti Mulai Tanggal.");
+ const my=normWa($("myWa").value);
+ if(!my) return warn("Isi No. WA Anda agar jawaban atasan/rekan bisa dikirim balik ke Anda.");
+ if(!picks.length) return warn("Centang minimal satu penerima.");
+ WA[nik]=my; saveWa(); renderApvList();
+ picks.forEach(r=>{ const c=$("apvList").querySelector(`input[value="${r.nik}"]`); if(c) c.checked=true; });
+ const hak=Number($("hakCuti").value||0), ambil=Number($("cutiDiambil").value||0);
+ let html=""; const rows=[];
+ if(!/^https?:/.test(location.protocol)) html+='<div class="apv-warn">Aplikasi masih dibuka dari file lokal. Tautan baru bisa dibuka penerima setelah aplikasi di-hosting online (mis. GitHub Pages / Cloudflare Pages).</div>';
+ picks.forEach(r=>{
+  const p={v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),nik,nama:emp.nama,bagian:emp.bagian,tglMasuk:emp.tglMasuk,hak,ambil,sisa:hak-ambil,mulai:$("mulaiCuti").value,masuk:$("masukLagi").value,alasan:$("alasan").value,kontak:$("kontak").value,pengganti:$("pengganti").value,wa:my,to:r.nama};
+  const url=baseUrl()+"?approve="+b64enc(p);
+  const num=WA[r.nik];
+  const wa=num?`https://wa.me/${num}?text=${encodeURIComponent(buildMsg(p,url))}`:`https://wa.me/?text=${encodeURIComponent(buildMsg(p,url))}`;
+  rows.push({r,url,wa,num});
+ });
+ out.innerHTML=html+rows.map((x,i)=>`<div class="apv-res-row"><b>${esc(proper(x.r.nama))}</b><a class="wa" target="_blank" rel="noopener" href="${esc(x.wa)}">${x.num?"Kirim WA":"Pilih kontak WA"}</a><button type="button" data-copy="${i}">Salin</button></div>`).join("");
+ out.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{ const u=rows[b.dataset.copy].url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{b.textContent="Tersalin";},()=>{prompt("Salin tautan:",u);}); });
+}
+$("btnApvGen").onclick=genApprovals;
+$("apvFilter").oninput=renderApvList;
+$("nik").addEventListener("input",()=>{ renderApvList(); if(WA[$("nik").value.trim()]) $("myWa").value=WA[$("nik").value.trim()]; });
+$("nik").addEventListener("change",()=>{ renderApvList(); if(WA[$("nik").value.trim()]) $("myWa").value=WA[$("nik").value.trim()]; });
+renderApvList();
+
+/* ----- Tampilan penerima (atasan / rekan) ----- */
+(function(){
+ const t=new URLSearchParams(location.search).get("approve"); if(!t) return;
+ let p; try{ p=b64dec(t); }catch(e){ p=null; }
+ const app=document.querySelector(".app"); if(app) app.style.display="none";
+ document.querySelectorAll(".app-guide,.app-footer").forEach(n=>n.style.display="none");
+ const v=document.createElement("div"); v.id="apvView";
+ if(!p||!p.nama){ v.innerHTML='<div class="apv-card"><h1>Tautan tidak valid</h1><p class="sub">Minta pemohon mengirim ulang tautan persetujuan.</p></div>'; document.body.appendChild(v); return; }
+ const rows=[["Pemohon",proper(p.nama)+" ("+esc(p.nik)+")"],["Bagian",p.bagian],["Mulai kerja",formatDate(p.tglMasuk)],["Tanggal cuti",p.mulai],["Lama",p.ambil+" hari"],["Masuk kembali",formatDate(p.masuk)],["Sisa cuti",p.sisa+" hari"],["Alasan",proper(p.alasan)||"-"],["Alamat / kontak",p.kontak||"-"],["Pengganti",proper(p.pengganti)||"-"]];
+ v.innerHTML=`<div class="apv-card"><h1>Persetujuan Cuti</h1><div class="sub">Halo ${esc(proper(p.to))}, mohon tanggapan Anda.</div><table>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table><textarea id="apvNote" placeholder="Catatan (opsional)"></textarea><div class="apv-btns"><button class="apv-no" id="apvNo">Tolak</button><button class="apv-yes" id="apvYes">Setuju</button></div><div class="apv-note">Tombol akan membuka WhatsApp dengan jawaban siap kirim ke ${esc(proper(p.nama))}.</div></div>`;
+ document.body.appendChild(v);
+ function reply(ok){
+  const note=document.getElementById("apvNote").value.trim();
+  const msg=`${ok?"✅ *DISETUJUI*":"❌ *DITOLAK*"}\n${proper(p.to)} ${ok?"menyetujui":"menolak"} permohonan cuti ${proper(p.nama)}\nTanggal: ${p.mulai} (${p.ambil} hari)${note?"\nCatatan: "+note:""}\nRef: ${p.id}`;
+  const num=normWa(p.wa);
+  location.href=(num?`https://wa.me/${num}`:`https://wa.me/`)+"?text="+encodeURIComponent(msg);
+ }
+ document.getElementById("apvYes").onclick=()=>reply(true);
+ document.getElementById("apvNo").onclick=()=>reply(false);
+})();
+</script>
 </body></html>
