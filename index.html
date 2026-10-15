@@ -1235,6 +1235,13 @@ if ('serviceWorker' in navigator) {
 <style id="ttd-style">
 .paper #pAtasanTtd img{transform-origin:50% 100%;transform:translate(var(--atx,0px),calc(17px + var(--aty,0px))) scale(var(--ats,1));}
 .paper #pPemohonTtd img{transform-origin:50% 100%;transform:translate(var(--ptx,0px),calc(17px + var(--pty,0px))) scale(var(--pts,1));}
+.paper #pAtasanTtd img,.paper #pPemohonTtd img{cursor:pointer}
+#ttdBox{position:fixed;z-index:8000;border:1.5px dashed #0054a6;background:rgba(0,84,166,.07);cursor:move;touch-action:none;border-radius:4px}
+#ttdBox[hidden]{display:none}
+#ttdBox .tb-h{position:absolute;right:-9px;bottom:-9px;width:18px;height:18px;border-radius:50%;background:#0054a6;border:2px solid #fff;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+#ttdBox .tb-r{position:absolute;right:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:#d50019;color:#fff;border:2px solid #fff;font-size:11px;line-height:1;padding:0;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+#ttdBox .tb-t{position:absolute;left:0;top:-22px;font-size:10.5px;background:#0054a6;color:#fff;padding:2px 6px;border-radius:5px;white-space:nowrap;pointer-events:none}
+@media print{#ttdBox{display:none!important}}
 #ttdPanel{position:fixed;right:16px;bottom:16px;width:300px;max-height:82vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:12px 16px 14px;z-index:9000;font-size:12px}
 #ttdPanel[hidden]{display:none}
 #ttdPanel h4{margin:10px 0 2px;font-size:12px;color:#1b3a5c}
@@ -1534,7 +1541,7 @@ function sync() {
  $("pTempatTanggal").textContent=todayPlace();
  const emp=EMPLOYEES.find(x=>x.nik===$("nik").value.trim());
  const ttdWrap=$("pPemohonTtd");
- ttdWrap.innerHTML=(emp&&emp.tandaTangan)?`<img src="${emp.tandaTangan}" alt="Tanda tangan pemohon">`:"";
+ ttdWrap.innerHTML=(emp&&emp.tandaTangan)?`<img src="${emp.tandaTangan}" data-nik="${emp.nik}" alt="Tanda tangan pemohon">`:"";
 }
 
 /* ===== Kalender Multi-Pilih: Cuti Mulai Tanggal ===== */
@@ -2639,7 +2646,7 @@ function renderApprovedForm(list){
  const tw=$("pAtasanTtd"), nm=$("pAtasan");
  const ok=(list||[]).filter(x=>x.status==="Disetujui");
  if(!ok.length){ tw.innerHTML=""; nm.innerHTML="&nbsp;"; return; }
- tw.innerHTML=ok.filter(x=>x.ttd).map(x=>`<img src="${esc(x.ttd)}" alt="Tanda tangan ${esc(x.nama)}">`).join("");
+ tw.innerHTML=ok.filter(x=>x.ttd).map(x=>`<img src="${esc(x.ttd)}" data-nik="${esc(x.nik)}" alt="Tanda tangan ${esc(x.nama)}">`).join("");
  nm.textContent=ok.map(x=>proper(x.nama)).join(" / ");
 }
 function paintStatus(list){
@@ -2822,6 +2829,50 @@ $("btnTtdPos").onclick=()=>{ const p=$("ttdPanel"); p.hidden=!p.hidden; if(!p.hi
 $("ttdClose").onclick=$("ttdDone").onclick=()=>{ $("ttdPanel").hidden=true; };
 $("ttdReset").onclick=()=>{ TTD=Object.assign({},TTD_DEF); ttdApply(); ttdSave(); ttdSync(); };
 ttdApply();
+</script>
+<div id="ttdBox" class="no-print" hidden><span class="tb-t">Geser = pindah · titik biru = ukuran</span><button type="button" class="tb-r" title="Kembalikan posisi">&#8634;</button><span class="tb-h"></span></div>
+<script>
+/* ===== Atur tanda tangan langsung di kertas: klik, geser, tarik titik biru (per penanda tangan/NIK) ===== */
+(function(){
+ const KEY="cuti_ttdpos2"; let TS={}; try{ TS=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){}
+ const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(TS)); }catch(e){} };
+ const box=document.getElementById("ttdBox"), hd=box.querySelector(".tb-h"), rs=box.querySelector(".tb-r");
+ let sel=null, mode=null, st=null;
+ const role=img=>img.closest("#pAtasanTtd")?"a":"p";
+ const cur=img=>{ const n=img.dataset.nik, c=TS[n]; if(c) return {x:c.x,y:c.y,s:c.s}; const r=role(img); return {x:Number(TTD[r+"tx"])||0,y:Number(TTD[r+"ty"])||0,s:(Number(TTD[r+"ts"])||100)/100}; };
+ function apply(img){ const n=img.dataset.nik, c=TS[n]; img.style.transform=c?`translate(${c.x}px,calc(17px + ${c.y}px)) scale(${c.s})`:""; }
+ function applyAll(){ document.querySelectorAll("#pAtasanTtd img,#pPemohonTtd img").forEach(i=>{ i.title="Klik untuk mengatur posisi tanda tangan"; apply(i); }); if(sel&&!document.body.contains(sel)) deselect(); else place(); }
+ function zoom(){ const p=document.querySelector(".paper"); return p&&p.offsetWidth?p.getBoundingClientRect().width/p.offsetWidth:1; }
+ function place(){ if(!sel) return; const r=sel.getBoundingClientRect(); box.style.left=r.left+"px"; box.style.top=r.top+"px"; box.style.width=r.width+"px"; box.style.height=r.height+"px"; }
+ function select(img){ sel=img; box.hidden=false; place(); }
+ function deselect(){ sel=null; box.hidden=true; }
+ const set=(c)=>{ c.x=Math.max(-200,Math.min(200,Math.round(c.x))); c.y=Math.max(-120,Math.min(120,Math.round(c.y))); c.s=Math.max(.3,Math.min(3,Math.round(c.s*100)/100)); TS[sel.dataset.nik]=c; apply(sel); place(); };
+ document.addEventListener("click",e=>{
+  const img=e.target.closest&&e.target.closest("#pAtasanTtd img,#pPemohonTtd img");
+  if(img&&img.dataset.nik){ select(img); return; }
+  if(!box.contains(e.target)) deselect();
+ });
+ box.addEventListener("pointerdown",e=>{
+  if(!sel||e.target===rs) return;
+  e.preventDefault(); box.setPointerCapture(e.pointerId);
+  mode=e.target===hd?"size":"move"; const c=cur(sel);
+  st={px:e.clientX,py:e.clientY,c,base:sel.offsetWidth||1,z:zoom()};
+ });
+ box.addEventListener("pointermove",e=>{
+  if(!mode||!sel) return;
+  const dx=(e.clientX-st.px)/st.z, dy=(e.clientY-st.py)/st.z;
+  if(mode==="move") set({x:st.c.x+dx,y:st.c.y+dy,s:st.c.s});
+  else set({x:st.c.x,y:st.c.y,s:st.c.s+2*dx/st.base});
+ });
+ const end=()=>{ if(mode){ mode=null; save(); } };
+ box.addEventListener("pointerup",end); box.addEventListener("pointercancel",end);
+ rs.addEventListener("click",e=>{ e.stopPropagation(); if(!sel) return; delete TS[sel.dataset.nik]; save(); apply(sel); place(); });
+ document.addEventListener("keydown",e=>{ if(e.key==="Escape") deselect(); });
+ window.addEventListener("scroll",place,true); window.addEventListener("resize",place);
+ const mo=new MutationObserver(applyAll);
+ ["pAtasanTtd","pPemohonTtd"].forEach(id=>{ const el=document.getElementById(id); if(el) mo.observe(el,{childList:true}); });
+ applyAll();
+})();
 </script>
 <div id="loginOverlay" class="no-print" hidden>
 <form class="login-card" id="loginForm" autocomplete="off">
