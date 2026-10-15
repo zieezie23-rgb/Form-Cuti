@@ -1220,6 +1220,17 @@ if ('serviceWorker' in navigator) {
 .apv-res-row .hist-x{color:#b91c1c;border-color:#fca5a5;padding:3px 8px;font-weight:700}
 .apv-res-row .hist-x[hidden]{display:none}
 .hist-empty{padding:12px;font-size:12px;color:#667085;text-align:center}
+.hist-bar{display:flex;justify-content:flex-end;margin:0 0 8px}
+.hist-bar[hidden]{display:none}
+.hist-bar button{font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid #fca5a5;background:#fff;color:#b91c1c;font-weight:600;cursor:pointer}
+.hist-item.hist-row{flex-direction:row;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;flex-wrap:nowrap}
+.hist-row .hist-main{flex:1 1 auto;min-width:0;font-size:12px;color:#1b3a5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-row .hist-main b{font-size:12.5px}
+.hist-row .hist-main small{font-size:11px;color:#667085}
+.hist-row .hist-sts{display:flex;gap:4px;flex:0 0 auto}
+.hist-row .apv-st{font-size:11px;padding:2px 7px;white-space:nowrap}
+.hist-row .hp{flex:0 0 auto;font-size:12px;padding:5px 10px;border-radius:7px;border:1px solid #1f5eff;background:#1f5eff;color:#fff;font-weight:600;cursor:pointer}
+.hist-row .hd{flex:0 0 auto;width:26px;height:26px;padding:0;border-radius:50%;border:1px solid #fca5a5;background:#fff;color:#b91c1c;font-weight:700;font-size:13px;line-height:1;cursor:pointer}
 </style>
 <style id="ttd-style">
 .paper #pAtasanTtd img{transform-origin:50% 100%;transform:translate(var(--atx,0px),calc(17px + var(--aty,0px))) scale(var(--ats,1));}
@@ -1238,7 +1249,11 @@ if ('serviceWorker' in navigator) {
 <style>
 body.need-login .app{display:none!important;}
 .user-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.user-bar #whoAmI{font-size:12px;}
+.app-header{padding-bottom:20px!important;}
+.user-bar{flex:0 0 100%;justify-content:flex-end;margin-top:2px;position:relative;z-index:2;}
+.user-bar{flex-wrap:nowrap;}
+.user-bar #whoAmI{font-size:12px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
+.user-bar .btn{flex:0 0 auto;white-space:nowrap;}
 .user-bar .btn{padding:5px 12px!important;min-height:0!important;height:auto!important;font-size:12px!important;line-height:1.3!important;border-radius:8px!important;box-shadow:none!important;}
 .user-bar #btnInbox{background:#ffd100!important;border:1px solid #e4b900!important;color:#1f2430!important;}
 .user-bar #btnLogout{background:#d50019!important;border:1px solid #b40014!important;color:#fff!important;}
@@ -2548,6 +2563,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="apv-overlay no-print" id="histModal" hidden>
 <div class="apv-dialog" role="dialog" aria-modal="true" aria-labelledby="histTitle">
 <div class="apv-dhead"><h3 id="histTitle">Riwayat Pengajuan</h3><button type="button" class="apv-x" id="histClose" aria-label="Tutup">&times;</button></div>
+<div class="hist-bar" id="histBar" hidden><button type="button" id="histClear">Hapus semua</button></div>
 <div id="histList"></div>
 </div>
 </div>
@@ -2703,6 +2719,17 @@ renderApvList();
 <script>
 /* ===== Riwayat pengajuan: lihat, batalkan (✕), cetak ulang dengan tanda tangan ===== */
 let histData=[], histTimer=null;
+function histHidden(){ try{ return new Set(JSON.parse(localStorage.getItem("cuti_hist_hidden")||"[]")); }catch(e){ return new Set(); } }
+function histHide(groups){ try{ const h=histHidden(); groups.forEach(x=>h.add(x)); localStorage.setItem("cuti_hist_hidden",JSON.stringify([...h].slice(-300))); }catch(e){} }
+function histPurge(group){
+ const groups=group?[group]:histData.map(g=>g.group);
+ histHide(groups);
+ histData=histData.filter(g=>!groups.includes(g.group));
+ $("histCount").textContent=histData.length?"("+histData.length+")":"";
+ $("btnHist").hidden=!histData.length;
+ histRender();
+ cloudPost(Object.assign({action:"purge",nikPemohon:histNik()},group?{group}:{})).then(()=>{ setTimeout(()=>{ histCheck(); refreshApprovals(); },500); });
+}
 function histNik(){ return $("nik").value.trim(); }
 function histCheck(){
  const btn=$("btnHist"), nik=histNik();
@@ -2711,7 +2738,7 @@ function histCheck(){
  histTimer=setTimeout(()=>{
   cloudGet({action:"history",nik},j=>{
    if(nik!==histNik()) return;
-   histData=(j&&j.data)||[];
+   histData=((j&&j.data)||[]).filter(g=>!histHidden().has(g.group));
    btn.hidden=!histData.length;
    $("histCount").textContent=histData.length?"("+histData.length+")":"";
    if(!$("histModal").hidden) histRender();
@@ -2726,12 +2753,16 @@ function histChip(x){
 }
 function histRender(){
  const box=$("histList");
+ $("histBar").hidden=!histData.length;
  box.innerHTML=histData.length?histData.map((g,i)=>{
-  const d=g.data||{}, pend=g.items.some(x=>x.status==="Menunggu");
-  return `<div class="hist-item"><div class="hist-top"><b>${esc(d.mulai||"Pengajuan cuti")}</b><small>${esc(fmtWaktu(g.waktuKirim))}</small></div>`+
-   `<div class="hist-sub">${d.ambil?esc(d.ambil)+" hari":""}${d.alasan?" · "+esc(proper(d.alasan)):""}</div>`+
-   g.items.map(x=>`<div class="apv-res-row"><b>${esc(proper(x.nama))}</b>${histChip(x)}${x.status==="Menunggu"?`<button type="button" class="hist-x" data-cx-id="${esc(x.id)}" title="Batalkan">✕</button>`:""}</div>`).join("")+
-   `<div class="hist-act">${pend?`<button type="button" class="hc" data-cx-group="${esc(g.group)}">✕ Batalkan pengajuan</button>`:""}${g.data?`<button type="button" class="hp" data-print="${i}">Cetak</button>`:""}</div></div>`;
+  const d=g.data||{};
+  const cnt={}; g.items.forEach(x=>{ (cnt[x.status]=cnt[x.status]||[]).push(proper(x.nama)); });
+  const defs=[["Disetujui","ok","✓"],["Menunggu","","…"],["Ditolak","no","✗"],["Dibatalkan","no","⊘"]];
+  const sts=defs.filter(([k])=>cnt[k]).map(([k,c,ic])=>`<span class="apv-st${c?" "+c:""}" title="${esc(k+": "+cnt[k].join(", "))}">${ic} ${cnt[k].length}</span>`).join("");
+  return `<div class="hist-item hist-row"><div class="hist-main"><b>${esc(d.mulai||"Pengajuan cuti")}</b>${d.ambil?" · "+esc(d.ambil)+" hari":""} <small>${esc(fmtWaktu(g.waktuKirim))}</small></div>`+
+   `<div class="hist-sts">${sts}</div>`+
+   `${g.data?`<button type="button" class="hp" data-print="${i}">Cetak</button>`:""}`+
+   `<button type="button" class="hd" data-del-group="${esc(g.group)}" title="Hapus riwayat" aria-label="Hapus riwayat">✕</button></div>`;
  }).join(""):'<div class="hist-empty">Belum ada pengajuan.</div>';
 }
 function histOpen(){ histRender(); $("histModal").hidden=false; }
@@ -2765,11 +2796,11 @@ $("histClose").onclick=histClose;
 $("histModal").addEventListener("mousedown",e=>{ if(e.target===$("histModal")) histClose(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("histModal").hidden) histClose(); });
 $("histList").addEventListener("click",e=>{
- const cid=e.target.closest("[data-cx-id]"), cg=e.target.closest("[data-cx-group]"), pr=e.target.closest("[data-print]");
- if(cid){ if(confirm("Batalkan permintaan persetujuan ke penerima ini?")) histCancel({id:cid.dataset.cxId}); }
- else if(cg){ if(confirm("Batalkan seluruh pengajuan ini? Hanya yang masih menunggu yang dibatalkan.")) histCancel({group:cg.dataset.cxGroup}); }
+ const dg=e.target.closest("[data-del-group]"), pr=e.target.closest("[data-print]");
+ if(dg){ if(confirm("Hapus riwayat pengajuan ini? Permintaan yang masih menunggu juga dibatalkan.")) histPurge(dg.dataset.delGroup); }
  else if(pr) histPrint(Number(pr.dataset.print));
 });
+$("histClear").onclick=()=>{ if(histData.length&&confirm("Hapus SEMUA riwayat pengajuan? Permintaan yang masih menunggu juga dibatalkan.")) histPurge(); };
 $("nik").addEventListener("input",histCheck); $("nik").addEventListener("change",histCheck);
 $("btnReset").addEventListener("click",()=>{ $("btnHist").hidden=true; histData=[]; });
 </script>
