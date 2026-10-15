@@ -1251,6 +1251,15 @@ body.need-login .app{display:none!important;}
 .login-card input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;font-size:15px;border:1px solid var(--line,#dde3ee);border-radius:8px;}
 .login-card button{width:100%;padding:11px;border:0;border-radius:10px;background:#1b3a5c;color:#fff;font-size:15px;font-weight:700;cursor:pointer;}
 .login-err{color:#dc2626;font-size:12px;min-height:16px;margin-bottom:8px;}
+#loginOverlay{background:linear-gradient(180deg,var(--brand-red,#d50019) 0 8px,var(--brand-blue,#0054a6) 8px 13px,var(--brand-yellow,#ffd100) 13px 17px,#eef1f5 17px);}
+.login-card{position:relative;overflow:hidden;border:0;border-radius:14px;padding:0 22px 22px;box-shadow:0 10px 30px rgba(0,40,90,.18);}
+.login-card:before{content:"";display:block;height:84px;margin:0 -22px 18px;background:linear-gradient(100deg,var(--brand-red,#d50019) 0 48%,var(--brand-blue,#0054a6) 48% 100%);border-bottom:6px solid var(--brand-yellow,#ffd100);}
+.login-card:after{content:"";position:absolute;right:-25px;top:-50px;width:140px;height:140px;border-radius:50%;background:rgba(255,209,0,.22);pointer-events:none;}
+.login-card h1{position:absolute;left:22px;right:22px;top:20px;margin:0;color:#fff;font-size:19px;z-index:1;}
+.login-card .sub{position:absolute;left:22px;right:22px;top:46px;margin:0;color:#fff;opacity:.95;font-size:13px;z-index:1;}
+.login-card input:focus{outline:0;border-color:var(--brand-blue,#0054a6);box-shadow:0 0 0 3px rgba(0,84,166,.18);}
+.login-card button{background:linear-gradient(100deg,var(--brand-red,#d50019),var(--brand-blue,#0054a6));border-bottom:3px solid var(--brand-yellow,#ffd100);}
+.login-card button:hover{filter:brightness(1.08);}
 .inbox-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 10px;margin-bottom:6px;border:1px solid var(--line,#dde3ee);border-radius:9px;background:#fff;cursor:pointer;font:inherit;font-size:13px;}
 .inbox-item b{flex:1;color:#1b3a5c;}
 .inbox-item small{display:block;color:#667085;font-weight:400;}
@@ -2773,9 +2782,9 @@ ttdApply();
 </script>
 <div id="loginOverlay" class="no-print" hidden>
 <form class="login-card" id="loginForm" autocomplete="off">
-<h1>Form Permohonan Cuti</h1><div class="sub">Masuk dengan NIK Anda.</div>
+<h1>Form Permohonan Cuti</h1><div class="sub">Masuk dengan NIK dan Password ESS anda</div>
 <label>NIK<input id="loginNik" inputmode="numeric" placeholder="Masukkan NIK" autocomplete="username"></label>
-<label>Password<input id="loginPass" type="password" placeholder="Password bebas" autocomplete="current-password"></label>
+<label>Password<input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"></label>
 <div class="login-err" id="loginErr"></div>
 <button type="submit">Masuk</button>
 </form>
